@@ -151,7 +151,9 @@ public class Coredump {
         private Thread.UncaughtExceptionHandler defaultHandler;
 
         public boolean enableJavaCrash() {
-            defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
+            if (defaultHandler == null) {
+                defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
+            }
             Thread.setDefaultUncaughtExceptionHandler(this);
             return true;
         }
