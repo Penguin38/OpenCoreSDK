@@ -6,6 +6,8 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
 
+import androidx.annotation.NonNull;
+
 public class Coredump {
 
     private static final String TAG = "Coredump";
@@ -16,6 +18,10 @@ public class Coredump {
     private final Object mLock = new Object();
     private String mCoreDir;
     private Listener mListener;
+    private JavaCrashHandler mJavaCrashHandler = new JavaCrashHandler();
+
+    public static final int JAVA = 1;
+    public static final int NATIVE = 2;
 
     static {
         System.loadLibrary("opencore");
@@ -38,18 +44,30 @@ public class Coredump {
         throw new IllegalStateException();
     }
 
-    public synchronized boolean enable() {
+    public synchronized boolean enable(int type) {
         if (!sIsInit)
             return false;
 
-        return native_enable();
+        switch (type) {
+            case JAVA:
+                return mJavaCrashHandler.enableJavaCrash();
+            case NATIVE:
+                return native_enable();
+        }
+        return false;
     }
 
-    public synchronized boolean disable() {
+    public synchronized boolean disable(int type) {
         if (!sIsInit)
             return false;
 
-        return native_diable();
+        switch (type) {
+            case JAVA:
+                return mJavaCrashHandler.disableJavaCrash();
+            case NATIVE:
+                return native_diable();
+        }
+        return false;
     }
 
     public synchronized boolean doCoredump() {
@@ -127,5 +145,29 @@ public class Coredump {
 
     public void setListener(Listener listener) {
         mListener = listener;
+    }
+
+    private static class JavaCrashHandler implements Thread.UncaughtExceptionHandler {
+        private Thread.UncaughtExceptionHandler defaultHandler;
+
+        public boolean enableJavaCrash() {
+            defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
+            Thread.setDefaultUncaughtExceptionHandler(this);
+            return true;
+        }
+
+        public boolean disableJavaCrash() {
+            if (defaultHandler != null) {
+                Thread.setDefaultUncaughtExceptionHandler(defaultHandler);
+            }
+            return true;
+        }
+
+        @Override
+        public void uncaughtException(@NonNull Thread thread, @NonNull Throwable throwable) {
+            disableJavaCrash();
+            Coredump.getInstance().doCoredump();
+            Process.killProcess(Process.myPid());
+        }
     }
 }
