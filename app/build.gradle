@@ -1,13 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 31
+    compileSdkVersion 30
     buildToolsVersion "30.0.3"
 
     defaultConfig {
         applicationId "penguin.opencore.tester"
         minSdkVersion 30
-        targetSdkVersion 31
+        targetSdkVersion 30
         versionCode 1
         versionName "1.0"
 
@@ -19,6 +19,8 @@ android {
             }
         }
     }
+
+    ndkVersion "21.1.6352462"
 
     buildTypes {
         release {
