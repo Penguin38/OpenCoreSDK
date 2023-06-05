@@ -1,7 +1,9 @@
 plugins {
     id 'com.android.library'
-    id 'maven-publish'
 }
+
+apply plugin: 'com.github.dcendents.android-maven'
+group='com.github.Penguin38'
 
 android {
     compileSdkVersion 30
