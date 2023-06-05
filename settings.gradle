@@ -1,2 +1,2 @@
-rootProject.name='OpenCoreSDK'
-include ':app'
+rootProject.name='OpenCoreTester'
+include ':app', ':OpenCoreSDK'
