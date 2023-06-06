@@ -96,22 +96,22 @@ void Opencore::setUserData(userdata *user)
     }
 }
 
+void Opencore::setMode(int mode)
+{
+    Opencore* impl = GetInstance();
+    if (impl) {
+        impl->SetMode(mode);
+    }
+}
+
 bool Opencore::IsFilterSegment(std::string segment)
 {
     if (segment == "/dev/binderfs/hwbinder"
             || segment == "/dev/binderfs/binder"
             || segment == "[vvar]"
             || segment == "/dev/mali0"
-            || segment == "/memfd:jit-cache (deleted)"
+            //|| segment == "/memfd:jit-cache (deleted)"
             ) {
-        return true;
-    }
-    return false;
-}
-
-bool Opencore::NeedPtraceSegment(std::string segment)
-{
-    if (segment == "/memfd:jit-cache (deleted)") {
         return true;
     }
     return false;

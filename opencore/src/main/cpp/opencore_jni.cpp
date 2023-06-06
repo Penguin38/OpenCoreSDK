@@ -55,6 +55,12 @@ Java_penguin_opencore_sdk_Coredump_native_1setCoreDir(JNIEnv *env, jobject /*thi
 }
 
 extern "C"
+JNIEXPORT void JNICALL
+Java_penguin_opencore_sdk_Coredump_native_1setCoreMode(JNIEnv *env, jobject /*thiz*/, jint mode) {
+    Opencore::setMode(mode);
+}
+
+extern "C"
 JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM *vm, void * /*reserved*/)
 {

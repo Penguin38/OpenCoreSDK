@@ -23,6 +23,10 @@ public class Coredump {
     public static final int JAVA = 1;
     public static final int NATIVE = 2;
 
+    private int mCoreMode = MODE_COPY | MODE_PTRACE;
+    public static final int MODE_PTRACE = 1 << 0;
+    public static final int MODE_COPY = 1 << 1;
+
     static {
         System.loadLibrary("opencore");
     }
@@ -103,11 +107,17 @@ public class Coredump {
         native_setCoreDir(dir);
     }
 
+    public void setCoreMode(int mode) {
+        mCoreMode = mode & (MODE_COPY | MODE_PTRACE);
+        native_setCoreMode(mCoreMode);
+    }
+
     public native String getVersion();
     private native boolean native_enable();
     private native boolean native_diable();
     private native boolean native_doCoredump();
     private native void native_setCoreDir(String dir);
+    private native void native_setCoreMode(int mode);
 
     private static class OpencoreHandler extends Handler {
         public static final int CODE_COREDUMP = 1;

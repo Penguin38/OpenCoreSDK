@@ -62,9 +62,11 @@ struct userdata {
 
 class Opencore {
 public:
+    static const int MODE_PTRACE = 1 << 0;
+    static const int MODE_COPY = 1 << 1;
+
     static Opencore* GetInstance();
     static bool IsFilterSegment(std::string segment);
-    static bool NeedPtraceSegment(std::string segment);
     static void HandleSignal(int);
     static void dump(bool java);
     static void callback(void *user);
@@ -72,16 +74,21 @@ public:
     static bool disable();
     static void setDir(std::string dir);
     static void setUserData(userdata *u);
+    static void setMode(int mode);
 
+    Opencore() { mode = MODE_COPY | MODE_PTRACE; }
     virtual bool DoCoreDump() = 0;
     std::string GetCoreDir() { return dir; }
     userdata* GetUser() { return user; }
+    int GetMode() { return mode; }
 private:
     void SetCoreDir(std::string d) { dir = d; }
     void SetUserData(userdata *u) { user = u; }
+    void SetMode(int m) { mode = m & (MODE_COPY | MODE_PTRACE); }
 
     userdata* user;
     std::string dir;
+    int mode;
 };
 
 #endif //OPENCORESDK_OPENCORE_H

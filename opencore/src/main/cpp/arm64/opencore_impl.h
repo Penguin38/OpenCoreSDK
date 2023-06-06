@@ -59,6 +59,8 @@ public:
     void StopAllThread(pid_t pid);
     void ContinueAllThread(pid_t pid);
     void Prepare(std::string filename);
+    void ParseSelfMapsVma();
+    bool InSelfMaps(uint64_t load);
     void ParseProcessMapsVma(pid_t pid);
     void ParserPhdr(int index, void *start, void *end, char* flags, char* filename);
     void ParserNtFile(int index, void *start, void *end, int fileofs, char* filename);
@@ -97,6 +99,7 @@ private:
     int fileslen;
     std::vector<uint8_t> buffer;
     std::map<uint64_t, std::string> maps;
+    std::map<uint64_t, std::string> self_maps;
 };
 
 #endif //OPENCORESDK_OPENCORE_IMPL_H

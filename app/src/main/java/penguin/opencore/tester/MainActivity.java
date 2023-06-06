@@ -21,15 +21,22 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         Coredump.getInstance().init();
+
+        Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE | Coredump.MODE_COPY);
+        //Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE);
+        //Coredump.getInstance().setCoreMode(Coredump.MODE_COPY);
+
         //Coredump.getInstance().setCoreDir(getFilesDir().getAbsolutePath());
         //Coredump.getInstance().setCoreDir("/data/local/tmp");
         Coredump.getInstance().setCoreDir(getExternalFilesDir(null).getAbsolutePath());
+
         Coredump.getInstance().setListener(new Coredump.Listener() {
             @Override
             public void onCompleted(String path) {
                 Toast.makeText(MainActivity.this, path, Toast.LENGTH_LONG).show();
             }
         });
+
         Coredump.getInstance().enable(Coredump.JAVA);
         Coredump.getInstance().enable(Coredump.NATIVE);
 

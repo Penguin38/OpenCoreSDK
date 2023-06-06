@@ -73,11 +73,41 @@ void OpencoreImpl::AlignNtFile()
     }
 }
 
+void OpencoreImpl::ParseSelfMapsVma()
+{
+    char line[1024];
+    FILE *fp = fopen("/proc/self/maps", "r");
+    if (fp) {
+        int index = 0;
+        while (fgets(line, sizeof(line), fp)) {
+            int m;
+            void *start;
+            char filename[256];
+            sscanf(line, "%p-%*p %*c%*c%*c%*c %*x %*x:%*x  %*u %[^\n] %n", &start, filename, &m);
+            self_maps[(uint64_t)start] = filename;
+            index++;
+        }
+        fclose(fp);
+    }
+}
+
+bool OpencoreImpl::InSelfMaps(uint64_t load) {
+    if (!self_maps.empty()) {
+        std::map<uint64_t, std::string>::iterator iter;
+        for(iter = self_maps.begin(); iter != self_maps.end(); iter++) {
+            if (iter->first == load) {
+                return true;
+            }
+        }
+    }
+    JNI_LOGI("[%p] %s Not in self.", (void *)load, maps[load].c_str());
+    return false;
+}
+
 void OpencoreImpl::ParseProcessMapsVma(pid_t pid)
 {
     char filename[32];
     char line[1024];
-    phnum = 0;
 
     snprintf(filename, sizeof(filename), "/proc/%d/maps", pid);
     FILE *fp = fopen(filename, "r");
@@ -329,22 +359,57 @@ void OpencoreImpl::AlignNoteSegment(FILE* fp)
 
 void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
 {
+    int mode = GetMode();
+    JNI_LOGI("%s Mode(%d)", __func__, mode);
     int index = 0;
+    uint8_t zero[4096];
+    memset(&zero, 0x0, sizeof(zero));
+    ParseSelfMapsVma();
     while(index < ehdr.e_phnum - 1) {
         if (phdr[index].p_filesz > 0) {
-            if (NeedPtraceSegment(maps[ntfile[index].start])) {
-                Elf64_Addr target = phdr[index].p_vaddr;
-                while (target < phdr[index].p_vaddr + phdr[index].p_memsz) {
-                    long mem = ptrace(PTRACE_PEEKTEXT, pid, target, 0x0);
-                    fwrite(&mem, sizeof(mem), 1, fp);
-                    target = target + sizeof(Elf64_Addr);
-                }
-            } else {
-                uint64_t ret = fwrite((void *)phdr[index].p_vaddr, phdr[index].p_memsz, 1, fp);
-                if (!ret)
-                    JNI_LOGE("[%p] %d write load segment fail. %s %s",
-                             (void *)phdr[index].p_vaddr, phdr[index].p_flags,
-                             strerror(errno), maps[ntfile[index].start].c_str());
+            switch (mode) {
+                case MODE_PTRACE: {
+                    Elf64_Addr target = phdr[index].p_vaddr;
+                    while (target < phdr[index].p_vaddr + phdr[index].p_memsz) {
+                        long mem = ptrace(PTRACE_PEEKTEXT, pid, target, 0x0);
+                        fwrite(&mem, sizeof(mem), 1, fp);
+                        target = target + sizeof(Elf64_Addr);
+                    }
+                } break;
+                case MODE_COPY: {
+                    if (InSelfMaps(phdr[index].p_vaddr)) {
+                        uint64_t ret = fwrite((void *)phdr[index].p_vaddr, phdr[index].p_memsz, 1, fp);
+                        if (ret != 1) {
+                            JNI_LOGE("[%p] write load segment fail. %s %s",
+                                    (void *)phdr[index].p_vaddr, strerror(errno), maps[ntfile[index].start].c_str());
+                        }
+                    } else {
+                        int count = phdr[index].p_memsz / sizeof(zero);
+                        for (int i = 0; i < count; i++) {
+                            uint64_t ret = fwrite(zero, sizeof(zero), 1, fp);
+                            if (ret != 1) {
+                                JNI_LOGE("[%p] padding load segment fail. %s %s",
+                                        (void *)phdr[index].p_vaddr, strerror(errno), maps[ntfile[index].start].c_str());
+                            }
+                        }
+                    }
+                } break;
+                default: {
+                    if (!InSelfMaps(phdr[index].p_vaddr)) {
+                        Elf64_Addr target = phdr[index].p_vaddr;
+                        while (target < phdr[index].p_vaddr + phdr[index].p_memsz) {
+                            long mem = ptrace(PTRACE_PEEKTEXT, pid, target, 0x0);
+                            fwrite(&mem, sizeof(mem), 1, fp);
+                            target = target + sizeof(Elf64_Addr);
+                        }
+                    } else {
+                        uint64_t ret = fwrite((void *)phdr[index].p_vaddr, phdr[index].p_memsz, 1, fp);
+                        if (ret != 1) {
+                            JNI_LOGE("[%p] write load segment fail. %s %s",
+                                    (void *)phdr[index].p_vaddr, strerror(errno), maps[ntfile[index].start].c_str());
+                        }
+                    }
+                } break;
             }
         }
         index++;
@@ -374,7 +439,8 @@ void OpencoreImpl::StopAllThread(pid_t pid)
     }
 }
 
-void OpencoreImpl::ContinueAllThread(pid_t pid) {
+void OpencoreImpl::ContinueAllThread(pid_t pid)
+{
     char task_dir[32];
     struct dirent *entry;
     snprintf(task_dir, sizeof(task_dir), "/proc/%d/task", pid);
@@ -404,6 +470,7 @@ void OpencoreImpl::Prepare(std::string filename)
     fileslen = 0;
     buffer.clear();
     maps.clear();
+    self_maps.clear();
 }
 
 void OpencoreImpl::Finish()
