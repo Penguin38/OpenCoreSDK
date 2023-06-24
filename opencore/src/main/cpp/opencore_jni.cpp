@@ -39,7 +39,7 @@ extern "C"
 JNIEXPORT jstring JNICALL
 Java_penguin_opencore_sdk_Coredump_getVersion(JNIEnv *env, jobject /*thiz*/)
 {
-    return env->NewStringUTF("Opencore-sdk-1.0");
+    return env->NewStringUTF("Opencore-sdk-1.2.7");
 }
 
 extern "C"
@@ -70,9 +70,8 @@ Java_penguin_opencore_sdk_Coredump_native_1setCoreDir(JNIEnv *env, jobject /*thi
 {
     jboolean isCopy;
     const char *cstr = env->GetStringUTFChars(dir, &isCopy);
-    std::string coredir = std::string(cstr);
+    Opencore::setDir(cstr);
     env->ReleaseStringUTFChars(dir, cstr);
-    Opencore::setDir(coredir);
 }
 
 extern "C"

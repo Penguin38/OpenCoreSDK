@@ -68,6 +68,7 @@ public:
     static void dump(bool java);
     static bool enable();
     static bool disable();
+    static void setDir(const char* dir);
     static void setDir(std::string dir);
     static void setUserData(void *u);
     static void setCallback(DumpCallback cb);

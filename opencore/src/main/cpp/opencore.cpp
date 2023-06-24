@@ -72,6 +72,14 @@ bool Opencore::disable()
     return false;
 }
 
+void Opencore::setDir(const char *dir)
+{
+    Opencore* impl = GetInstance();
+    if (impl) {
+        impl->SetCoreDir(dir);
+    }
+}
+
 void Opencore::setDir(std::string dir)
 {
     Opencore* impl = GetInstance();
