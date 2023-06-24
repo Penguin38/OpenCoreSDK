@@ -28,7 +28,7 @@ public class Coredump {
     public static final int MODE_COPY = 1 << 1;
 
     static {
-        System.loadLibrary("opencore");
+        System.loadLibrary("opencore-jni");
     }
 
     private Coredump() {}

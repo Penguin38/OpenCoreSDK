@@ -55,10 +55,7 @@
 */
 #define NT_GNU_PROPERTY_TYPE_0 5
 
-struct userdata {
-    jclass gCoredump;
-    jmethodID gCallbackEvent;
-};
+typedef void (*DumpCallback)(void* user, bool java);
 
 class Opencore {
 public:
@@ -69,24 +66,27 @@ public:
     static bool IsFilterSegment(std::string segment);
     static void HandleSignal(int);
     static void dump(bool java);
-    static void callback(void *user);
     static bool enable();
     static bool disable();
     static void setDir(std::string dir);
-    static void setUserData(userdata *u);
+    static void setUserData(void *u);
+    static void setCallback(DumpCallback cb);
     static void setMode(int mode);
 
     Opencore() { mode = MODE_COPY | MODE_PTRACE; }
     virtual bool DoCoreDump() = 0;
     std::string GetCoreDir() { return dir; }
-    userdata* GetUser() { return user; }
+    void* GetUser() { return user; }
+    DumpCallback GetCallback() { return cb; }
     int GetMode() { return mode; }
 private:
     void SetCoreDir(std::string d) { dir = d; }
-    void SetUserData(userdata *u) { user = u; }
+    void SetUserData(void *u) { user = u; }
+    void SetCallback(DumpCallback c) { cb = c; }
     void SetMode(int m) { mode = m & (MODE_COPY | MODE_PTRACE); }
 
-    userdata* user;
+    void* user;
+    DumpCallback cb;
     std::string dir;
     int mode;
 };

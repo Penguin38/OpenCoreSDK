@@ -3,12 +3,14 @@ package penguin.opencore.tester;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 import penguin.opencore.sdk.Coredump;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+        implements View.OnClickListener, Coredump.Listener {
 
     // Used to load the 'native-lib' library on application startup.
     static {
@@ -20,62 +22,54 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Coredump.getInstance().init();
-
-        Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE | Coredump.MODE_COPY);
-        //Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE);
-        //Coredump.getInstance().setCoreMode(Coredump.MODE_COPY);
-
-        //Coredump.getInstance().setCoreDir(getFilesDir().getAbsolutePath());
-        //Coredump.getInstance().setCoreDir("/data/local/tmp");
-        Coredump.getInstance().setCoreDir(getExternalFilesDir(null).getAbsolutePath());
-
-        Coredump.getInstance().setListener(new Coredump.Listener() {
-            @Override
-            public void onCompleted(String path) {
-                Toast.makeText(MainActivity.this, path, Toast.LENGTH_LONG).show();
-            }
-        });
-
-        Coredump.getInstance().enable(Coredump.JAVA);
-        Coredump.getInstance().enable(Coredump.NATIVE);
-
-        Button javaCrash = findViewById(R.id.button);
-        javaCrash.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        View view = null;
-                        view.callOnClick();
-                    }
-                }).start();
-            }
-        });
-
-        Button nativeCrash = findViewById(R.id.button2);
-        nativeCrash.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        nativeCrashJNI();
-                    }
-                }).start();
-            }
-        });
-
-        Button directJavaCore = findViewById(R.id.button3);
-        directJavaCore.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Coredump.getInstance().doCoredump();
-            }
-        });
+        Coredump.getInstance().setListener(this);
+        findViewById(R.id.button).setOnClickListener(this);
+        findViewById(R.id.button2).setOnClickListener(this);
+        findViewById(R.id.button3).setOnClickListener(this);
     }
 
+    private void doJavaCrash() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                View view = null;
+                view.callOnClick();
+            }
+        }).start();
+    }
+
+    private void doNativeCrash() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                nativeCrashJNI();
+            }
+        }).start();
+    }
+
+    private void doDirectJavaCore() {
+        Coredump.getInstance().doCoredump();
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.button:
+                doJavaCrash();
+                break;
+            case R.id.button2:
+                doNativeCrash();
+                break;
+            case R.id.button3:
+                doDirectJavaCore();
+                break;
+        }
+    }
+
+    @Override
+    public void onCompleted(String path) {
+        Toast.makeText(MainActivity.this, path, Toast.LENGTH_LONG).show();
+    }
     /**
      * A native method that is implemented by the 'native-lib' native library,
      * which is packaged with this application.

@@ -20,13 +20,6 @@ Opencore* Opencore::GetInstance()
     return nullptr;
 }
 
-void Opencore::callback(void *arg)
-{
-    userdata *user = reinterpret_cast<userdata*>(arg);
-    JNIEnv *env = android::AndroidJNI::getJNIEnv();
-    env->CallStaticVoidMethod(user->gCoredump, user->gCallbackEvent);
-}
-
 void Opencore::dump(bool java)
 {
     Opencore* impl = GetInstance();
@@ -36,10 +29,9 @@ void Opencore::dump(bool java)
         JNI_LOGI("Not support coredump!!");
     }
 
-    if (!java) {
-        android::AndroidJNI::createJavaThread("opencore-cb", Opencore::callback, (void *)impl->GetUser());
-    } else {
-        callback((void *)impl->GetUser());
+    DumpCallback callback = impl->GetCallback();
+    if (callback) {
+        callback(impl->GetUser(), java);
     }
 }
 
@@ -88,11 +80,19 @@ void Opencore::setDir(std::string dir)
     }
 }
 
-void Opencore::setUserData(userdata *user)
+void Opencore::setUserData(void *user)
 {
     Opencore* impl = GetInstance();
     if (impl) {
         impl->SetUserData(user);
+    }
+}
+
+void Opencore::setCallback(DumpCallback cb)
+{
+    Opencore* impl = GetInstance();
+    if (impl) {
+        impl->SetCallback(cb);
     }
 }
 

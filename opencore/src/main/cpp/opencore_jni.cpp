@@ -12,7 +12,28 @@
 #include <pthread.h>
 #include <unistd.h>
 
+struct userdata {
+    jclass gCoredump;
+    jmethodID gCallbackEvent;
+};
+
 static userdata user;
+
+static void penguin_opencore_sdk_coredump_docallback(void *arg)
+{
+    userdata *user = reinterpret_cast<userdata*>(arg);
+    JNIEnv *env = android::AndroidJNI::getJNIEnv();
+    env->CallStaticVoidMethod(user->gCoredump, user->gCallbackEvent);
+}
+
+static void penguin_opencore_sdk_coredump_callback(void* user, bool java)
+{
+    if (!java) {
+        android::AndroidJNI::createJavaThread("opencore-cb", penguin_opencore_sdk_coredump_docallback, user);
+    } else {
+        penguin_opencore_sdk_coredump_docallback(user);
+    }
+}
 
 extern "C"
 JNIEXPORT jstring JNICALL
@@ -71,5 +92,6 @@ JNI_OnLoad(JavaVM *vm, void * /*reserved*/)
     user.gCoredump = (jclass)env->NewGlobalRef(clazz);
     user.gCallbackEvent = env->GetStaticMethodID(user.gCoredump, "callbackEvent", "()V");
     Opencore::setUserData(&user);
+    Opencore::setCallback(penguin_opencore_sdk_coredump_callback);
     return JNI_VERSION_1_4;
 }
