@@ -2,6 +2,7 @@
 #define LOG_TAG "Opencore"
 #endif
 
+#include <sys/prctl.h>
 #include <eajnis/AndroidJNI.h>
 #include "opencore.h"
 #if defined(__aarch64__) || defined(__arm64__)
@@ -24,6 +25,8 @@ void Opencore::dump(bool java)
 {
     Opencore* impl = GetInstance();
     if (impl) {
+        prctl(PR_SET_DUMPABLE, 1);
+        prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
         impl->DoCoreDump();
     } else {
         JNI_LOGI("Not support coredump!!");
