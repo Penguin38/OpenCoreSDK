@@ -20,6 +20,7 @@ typedef struct elf32_prstatus {
     uint32_t             pr_si_code;
     uint32_t             pr_si_errno;
     uint16_t             pr_cursig;
+    uint16_t             __padding1;
     uint32_t             pr_sigpend;
     uint32_t             pr_sighold;
     uint32_t             pr_pid;
@@ -32,7 +33,8 @@ typedef struct elf32_prstatus {
     uint64_t             pr_cstime;
     struct core_arm_pt_regs  pr_reg;
     uint32_t             pr_fpvalid;
-} Elf32_prstatus;
+    uint32_t             __padding2;
+} __attribute__((packed, aligned(1))) Elf32_prstatus;
 
 typedef struct elf32_auxv {
     uint32_t a_type;
