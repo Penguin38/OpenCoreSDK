@@ -220,12 +220,12 @@ void OpencoreImpl::CreateCorePrStatus(pid_t pid)
 void OpencoreImpl::CreateCoreAUXV(pid_t pid)
 {
     char filename[32];
-    char line[sizeof(Elf32_auxv) + 1];
+    Elf32_auxv vec;
     snprintf(filename, sizeof(filename), "/proc/%d/auxv", pid);
 
-    FILE *fp = fopen(filename, "r");
+    FILE *fp = fopen(filename, "rb");
     if (fp != nullptr) {
-        while (fgets(line, sizeof(line), fp)) {
+        while (fread(&vec, sizeof(vec), 1, fp)) {
             auxvnum++;
         }
         fseek(fp, 0, SEEK_SET);
@@ -234,9 +234,9 @@ void OpencoreImpl::CreateCoreAUXV(pid_t pid)
         memset(auxv, 0, auxvnum * sizeof(Elf32_auxv));
 
         int index =0;
-        while (fgets(line, sizeof(line), fp)) {
-            auxv[index].a_type = *(uint32_t *)&line[0];
-            auxv[index].a_val = *(uint32_t *)&line[4];
+        while (fread(&vec, sizeof(vec), 1, fp)) {
+            auxv[index].a_type = vec.a_type;
+            auxv[index].a_val = vec.a_val;
             index++;
         }
 
