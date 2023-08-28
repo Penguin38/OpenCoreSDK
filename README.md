@@ -21,12 +21,12 @@ dependencyResolutionManagement {
 ```
 dependencies {
     ...
-    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.2.9'
+    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.3.0'
 }
 ```
 ## 例子
 ```
-... {
+{
     //  初始化组件
     Coredump.getInstance().init();
 
