@@ -443,6 +443,8 @@ void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
         }
         index++;
     }
+    if (fd > 0)
+        close(fd);
 }
 
 void OpencoreImpl::StopAllThread(pid_t pid)
