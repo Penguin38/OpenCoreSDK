@@ -111,7 +111,11 @@ void Opencore::setMode(int mode)
 {
     Opencore* impl = GetInstance();
     if (impl) {
-        impl->SetMode(mode);
+        if (mode > MODE_MAX) {
+            impl->SetMode(MODE_MAX);
+        } else {
+            impl->SetMode(mode);
+        }
     }
 }
 

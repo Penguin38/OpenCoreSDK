@@ -11,6 +11,7 @@
 #include <sys/wait.h>
 #include <sys/uio.h>
 #include <errno.h>
+#include <fcntl.h>
 
 OpencoreImpl* impl = new OpencoreImpl;
 
@@ -359,11 +360,23 @@ void OpencoreImpl::AlignNoteSegment(FILE* fp)
 
 void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
 {
+    char filename[32];
+    int fd;
     int mode = GetMode();
     JNI_LOGI("%s Mode(%d)", __func__, mode);
     int index = 0;
     uint8_t zero[4096];
     memset(&zero, 0x0, sizeof(zero));
+
+    if (mode == MODE_COPY2) {
+        snprintf(filename, sizeof(filename), "/proc/%d/mem", pid);
+        fd = open(filename, O_RDONLY);
+        if (fd < 0) {
+            JNI_LOGE("Failed to open %s, mode switch MODE_COPY.\n", filename);
+            mode = MODE_COPY;
+        }
+    }
+
     ParseSelfMapsVma();
     while(index < ehdr.e_phnum - 1) {
         if (phdr[index].p_filesz > 0) {
@@ -394,7 +407,7 @@ void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
                         }
                     }
                 } break;
-                default: {
+                case MODE_PTRACE | MODE_COPY: {
                     if (!InSelfMaps(phdr[index].p_vaddr)) {
                         Elf32_Addr target = phdr[index].p_vaddr;
                         while (target < phdr[index].p_vaddr + phdr[index].p_memsz) {
@@ -409,6 +422,21 @@ void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
                                     phdr[index].p_vaddr, strerror(errno), maps[ntfile[index].start].c_str());
                         }
                     }
+                } break;
+                case MODE_COPY2: {
+                    int count = phdr[index].p_memsz / sizeof(zero);
+                    for (int i = 0; i < count; i++) {
+                        memset(&zero, 0x0, sizeof(zero));
+                        pread(fd, &zero, sizeof(zero), phdr[index].p_vaddr + (i * sizeof(zero)));
+                        uint32_t ret = fwrite(zero, sizeof(zero), 1, fp);
+                        if (ret != 1) {
+                            JNI_LOGE("[0x%x] write load segment fail. %s %s",
+                                    phdr[index].p_vaddr, strerror(errno), maps[ntfile[index].start].c_str());
+                        }
+                    }
+                } break;
+                default: {
+                    // do nothing
                 } break;
             }
         }
@@ -436,6 +464,7 @@ void OpencoreImpl::StopAllThread(pid_t pid)
             int status = 0;
             waitpid(tid, &status, WUNTRACED);
         }
+        closedir(dp);
     }
 }
 
@@ -456,6 +485,7 @@ void OpencoreImpl::ContinueAllThread(pid_t pid)
                 continue;
             }
         }
+        closedir(dp);
     }
 }
 

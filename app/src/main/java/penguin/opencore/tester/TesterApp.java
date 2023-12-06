@@ -11,9 +11,10 @@ public class TesterApp extends Application {
 
         Coredump.getInstance().init();
 
-        Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE | Coredump.MODE_COPY);
+        //Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE | Coredump.MODE_COPY);
         //Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE);
         //Coredump.getInstance().setCoreMode(Coredump.MODE_COPY);
+        Coredump.getInstance().setCoreMode(Coredump.MODE_COPY2);
 
         //Coredump.getInstance().setCoreDir(getFilesDir().getAbsolutePath());
         //Coredump.getInstance().setCoreDir("/data/local/tmp");

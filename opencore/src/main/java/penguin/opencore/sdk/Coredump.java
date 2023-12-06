@@ -23,9 +23,11 @@ public class Coredump {
     public static final int JAVA = 1;
     public static final int NATIVE = 2;
 
-    private int mCoreMode = MODE_COPY | MODE_PTRACE;
+    private int mCoreMode = MODE_COPY2;
     public static final int MODE_PTRACE = 1 << 0;
     public static final int MODE_COPY = 1 << 1;
+    public static final int MODE_COPY2 = 1 << 2;
+    public static final int MODE_MAX = MODE_COPY2;
 
     static {
         System.loadLibrary("opencore-jni");
@@ -108,7 +110,11 @@ public class Coredump {
     }
 
     public void setCoreMode(int mode) {
-        mCoreMode = mode & (MODE_COPY | MODE_PTRACE);
+        if (mode > MODE_MAX) {
+            mCoreMode = MODE_MAX;
+        } else {
+            mCoreMode = mode;
+        }
         native_setCoreMode(mCoreMode);
     }
 

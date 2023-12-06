@@ -61,6 +61,8 @@ class Opencore {
 public:
     static const int MODE_PTRACE = 1 << 0;
     static const int MODE_COPY = 1 << 1;
+    static const int MODE_COPY2 = 1 << 2;
+    static const int MODE_MAX = MODE_COPY2;
 
     static Opencore* GetInstance();
     static bool IsFilterSegment(std::string segment);
@@ -74,7 +76,7 @@ public:
     static void setCallback(DumpCallback cb);
     static void setMode(int mode);
 
-    Opencore() { mode = MODE_COPY | MODE_PTRACE; }
+    Opencore() { mode = MODE_COPY2; }
     virtual bool DoCoreDump() = 0;
     std::string GetCoreDir() { return dir; }
     void* GetUser() { return user; }
@@ -84,7 +86,7 @@ private:
     void SetCoreDir(std::string d) { dir = d; }
     void SetUserData(void *u) { user = u; }
     void SetCallback(DumpCallback c) { cb = c; }
-    void SetMode(int m) { mode = m & (MODE_COPY | MODE_PTRACE); }
+    void SetMode(int m) { mode = m; }
 
     void* user;
     DumpCallback cb;

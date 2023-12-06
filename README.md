@@ -21,7 +21,7 @@ dependencyResolutionManagement {
 ```
 dependencies {
     ...
-    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.3.0'
+    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.3.1'
 }
 ```
 ## 例子
@@ -31,9 +31,10 @@ dependencies {
     Coredump.getInstance().init();
 
     //  设置模式
-    Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE | Coredump.MODE_COPY);
+    // Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE | Coredump.MODE_COPY);
     // Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE);
     // Coredump.getInstance().setCoreMode(Coredump.MODE_COPY);
+    Coredump.getInstance().setCoreMode(Coredump.MODE_COPY2);
 
 
     //  设置 Coredump 保存目录
