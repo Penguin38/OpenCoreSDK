@@ -3,6 +3,7 @@
 
 #include <jni.h>
 #include <string>
+#include <pthread.h>
 
 #define ELFCOREMAGIC "CORE"
 /*
@@ -56,6 +57,8 @@
 #define NT_GNU_PROPERTY_TYPE_0 5
 
 typedef void (*DumpCallback)(void* user, bool java);
+
+static pthread_mutex_t gLock = PTHREAD_MUTEX_INITIALIZER;
 
 class Opencore {
 public:

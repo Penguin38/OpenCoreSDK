@@ -23,11 +23,23 @@ Opencore* Opencore::GetInstance()
 
 void Opencore::dump(bool java)
 {
+    int ori_dumpable;
+    bool need_restore_dumpable = false;
+    bool need_restore_ptrace = false;
+
     Opencore* impl = GetInstance();
     if (impl) {
-        prctl(PR_SET_DUMPABLE, 1);
-        prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY);
+        ori_dumpable = prctl(PR_GET_DUMPABLE);
+        if (!prctl(PR_SET_DUMPABLE, 1))
+            need_restore_dumpable = true;
+
+        if (!prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY))
+            need_restore_ptrace = true;
+
         impl->DoCoreDump();
+
+        if (need_restore_dumpable) prctl(PR_SET_DUMPABLE, ori_dumpable);
+        if (need_restore_ptrace) prctl(PR_SET_PTRACER, 0);
     } else {
         JNI_LOGI("Not support coredump!!");
     }
@@ -40,8 +52,10 @@ void Opencore::dump(bool java)
 
 void Opencore::HandleSignal(int)
 {
+    pthread_mutex_lock(&gLock);
     disable();
     dump(false);
+    pthread_mutex_unlock(&gLock);
 }
 
 bool Opencore::enable()
