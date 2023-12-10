@@ -26,6 +26,7 @@ public class MainActivity extends AppCompatActivity
         findViewById(R.id.button).setOnClickListener(this);
         findViewById(R.id.button2).setOnClickListener(this);
         findViewById(R.id.button3).setOnClickListener(this);
+        findViewById(R.id.button4).setOnClickListener(this);
     }
 
     private void doJavaCrash() {
@@ -51,6 +52,15 @@ public class MainActivity extends AppCompatActivity
         Coredump.getInstance().doCoredump();
     }
 
+    private void doAbort() {
+         new Thread(new Runnable() {
+            @Override
+            public void run() {
+                nativeAbortJNI();
+            }
+        }).start();
+    }
+
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
@@ -62,6 +72,9 @@ public class MainActivity extends AppCompatActivity
                 break;
             case R.id.button3:
                 doDirectJavaCore();
+                break;
+            case R.id.button4:
+                doAbort();
                 break;
         }
     }
@@ -75,4 +88,5 @@ public class MainActivity extends AppCompatActivity
      * which is packaged with this application.
      */
     public native void nativeCrashJNI();
+    public native void nativeAbortJNI();
 }
