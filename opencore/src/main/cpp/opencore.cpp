@@ -6,6 +6,8 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <fcntl.h>
+#include <pthread.h>
+#include <signal.h>
 #include <unistd.h>
 #include <sys/prctl.h>
 #include <eajnis/AndroidJNI.h>
@@ -25,6 +27,9 @@ Opencore* Opencore::GetInstance()
 #endif
     return nullptr;
 }
+
+static pthread_mutex_t gLock = PTHREAD_MUTEX_INITIALIZER;
+static struct sigaction g_restore_action[5];
 
 void Opencore::dump(bool java, const char* filename)
 {
@@ -142,15 +147,16 @@ void Opencore::dump(bool java, const char* filename)
 
     DumpCallback callback = impl->GetCallback();
     if (callback) {
-        callback(impl->GetUser(), java, output);
+        callback(java, output);
     }
 }
 
-void Opencore::HandleSignal(int)
+void Opencore::HandleSignal(int sig)
 {
     pthread_mutex_lock(&gLock);
     disable();
     dump(false, nullptr);
+    raise(sig);
     pthread_mutex_unlock(&gLock);
 }
 
@@ -159,13 +165,21 @@ bool Opencore::enable()
     Opencore* impl = GetInstance();
     if (impl) {
         struct sigaction stact;
+        struct sigaction oldact[5];
         memset(&stact, 0, sizeof(stact));
         stact.sa_handler = Opencore::HandleSignal;
-        sigaction(SIGSEGV, &stact, NULL);
-        sigaction(SIGABRT, &stact, NULL);
-        sigaction(SIGBUS, &stact, NULL);
-        sigaction(SIGILL, &stact, NULL);
-        sigaction(SIGFPE, &stact, NULL);
+
+        sigaction(SIGSEGV, &stact, &oldact[0]);
+        sigaction(SIGABRT, &stact, &oldact[1]);
+        sigaction(SIGBUS, &stact, &oldact[2]);
+        sigaction(SIGILL, &stact, &oldact[3]);
+        sigaction(SIGFPE, &stact, &oldact[4]);
+
+        for (int index = 0; index < 5; index++) {
+            if (oldact[index].sa_handler != Opencore::HandleSignal) {
+                memcpy(&g_restore_action[index], &oldact[index], sizeof(struct sigaction));
+            }
+        }
         return true;
     }
     return false;
@@ -175,11 +189,11 @@ bool Opencore::disable()
 {
     Opencore* impl = GetInstance();
     if (impl) {
-        signal(SIGSEGV, SIG_DFL);
-        signal(SIGABRT, SIG_DFL);
-        signal(SIGBUS, SIG_DFL);
-        signal(SIGILL, SIG_DFL);
-        signal(SIGFPE, SIG_DFL);
+        sigaction(SIGSEGV, &g_restore_action[0], NULL);
+        sigaction(SIGABRT, &g_restore_action[1], NULL);
+        sigaction(SIGBUS, &g_restore_action[2], NULL);
+        sigaction(SIGILL, &g_restore_action[3], NULL);
+        sigaction(SIGFPE, &g_restore_action[4], NULL);
         return true;
     }
     return false;
@@ -190,14 +204,6 @@ void Opencore::setDir(const char *dir)
     Opencore* impl = GetInstance();
     if (impl) {
         impl->SetCoreDir(dir);
-    }
-}
-
-void Opencore::setUserData(void *user)
-{
-    Opencore* impl = GetInstance();
-    if (impl) {
-        impl->SetUserData(user);
     }
 }
 

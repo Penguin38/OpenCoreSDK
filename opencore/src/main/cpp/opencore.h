@@ -3,7 +3,6 @@
 
 #include <jni.h>
 #include <string>
-#include <pthread.h>
 
 #define ELFCOREMAGIC "CORE"
 /*
@@ -56,9 +55,7 @@
 */
 #define NT_GNU_PROPERTY_TYPE_0 5
 
-typedef void (*DumpCallback)(void* user, bool java, std::string& filepath);
-
-static pthread_mutex_t gLock = PTHREAD_MUTEX_INITIALIZER;
+typedef void (*DumpCallback)(bool java, std::string& filepath);
 
 class Opencore {
 public:
@@ -83,7 +80,6 @@ public:
     static bool enable();
     static bool disable();
     static void setDir(const char* dir);
-    static void setUserData(void *u);
     static void setCallback(DumpCallback cb);
     static void setMode(int mode);
     static void setFlag(int flag);
@@ -94,18 +90,15 @@ public:
     }
     virtual bool DoCoreDump(std::string& filename) = 0;
     std::string GetCoreDir() { return dir; }
-    void* GetUser() { return user; }
     DumpCallback GetCallback() { return cb; }
     int GetMode() { return mode; }
     int GetFlag() { return flag; }
 private:
     void SetCoreDir(std::string d) { dir = d; }
-    void SetUserData(void *u) { user = u; }
     void SetCallback(DumpCallback c) { cb = c; }
     void SetMode(int m) { mode = m; }
     void SetFlag(int f) { flag = f; }
 
-    void* user;
     DumpCallback cb;
     std::string dir;
     int mode;

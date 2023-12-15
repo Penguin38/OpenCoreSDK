@@ -17,10 +17,9 @@ struct userdata {
     jmethodID gCallbackEvent;
 };
 
-static userdata user;
+static userdata gUser;
 
 struct callback_data {
-    userdata* user;
     std::string path;
 };
 
@@ -29,13 +28,12 @@ static void penguin_opencore_sdk_coredump_docallback(void *arg)
     callback_data *cbp = reinterpret_cast<callback_data *>(arg);
     JNIEnv *env = android::AndroidJNI::getJNIEnv();
     jstring filepath = env->NewStringUTF(cbp->path.c_str());
-    env->CallStaticVoidMethod(cbp->user->gCoredump, cbp->user->gCallbackEvent, filepath);
+    env->CallStaticVoidMethod(gUser.gCoredump, gUser.gCallbackEvent, filepath);
 }
 
-static void penguin_opencore_sdk_coredump_callback(void* user, bool java, std::string& filepath)
+static void penguin_opencore_sdk_coredump_callback(bool java, std::string& filepath)
 {
     callback_data cb;
-    cb.user = reinterpret_cast<userdata*>(user);
     cb.path = filepath;
     if (!java) {
         android::AndroidJNI::createJavaThread("opencore-cb", penguin_opencore_sdk_coredump_docallback, &cb);
@@ -112,9 +110,8 @@ JNI_OnLoad(JavaVM *vm, void * /*reserved*/)
     android::AndroidJNI::init(vm);
     JNIEnv *env = android::AndroidJNI::getJNIEnv();
     jclass clazz= env->FindClass("penguin/opencore/sdk/Coredump");
-    user.gCoredump = (jclass)env->NewGlobalRef(clazz);
-    user.gCallbackEvent = env->GetStaticMethodID(user.gCoredump, "callbackEvent", "(Ljava/lang/String;)V");
-    Opencore::setUserData(&user);
+    gUser.gCoredump = (jclass)env->NewGlobalRef(clazz);
+    gUser.gCallbackEvent = env->GetStaticMethodID(gUser.gCoredump, "callbackEvent", "(Ljava/lang/String;)V");
     Opencore::setCallback(penguin_opencore_sdk_coredump_callback);
     return JNI_VERSION_1_4;
 }

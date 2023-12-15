@@ -570,7 +570,7 @@ bool OpencoreImpl::DoCoreDump(std::string& filename)
         }
 
         // ContinueAllThread(getppid());
-        kill(getpid(), 9);
+        _exit(0);
     } else if (child > 0) {
         JNI_LOGI("Wait (%d) coredump", child);
         int status = 0;
