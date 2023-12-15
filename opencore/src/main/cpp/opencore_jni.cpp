@@ -46,7 +46,7 @@ extern "C"
 JNIEXPORT jstring JNICALL
 Java_penguin_opencore_sdk_Coredump_getVersion(JNIEnv *env, jobject /*thiz*/)
 {
-    return env->NewStringUTF("Opencore-sdk-1.3.3");
+    return env->NewStringUTF("Opencore-sdk-1.3.4");
 }
 
 extern "C"
