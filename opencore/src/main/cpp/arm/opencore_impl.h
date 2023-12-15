@@ -58,7 +58,7 @@ constexpr uint32_t RoundUp(uint32_t x, uint32_t n) {
 class OpencoreImpl : public Opencore {
 public:
     static OpencoreImpl* GetInstance();
-    bool DoCoreDump();
+    bool DoCoreDump(std::string& filename);
     void StopAllThread(pid_t pid);
     void ContinueAllThread(pid_t pid);
     void Prepare(std::string filename);

@@ -19,6 +19,12 @@ public class TesterApp extends Application {
         //Coredump.getInstance().setCoreDir(getFilesDir().getAbsolutePath());
         //Coredump.getInstance().setCoreDir("/data/local/tmp");
         Coredump.getInstance().setCoreDir(getExternalFilesDir(null).getAbsolutePath());
+        Coredump.getInstance().setCoreFlag(Coredump.FLAG_CORE
+                                         | Coredump.FLAG_PROCESS_COMM
+                                         | Coredump.FLAG_PID
+                                         | Coredump.FLAG_THREAD_COMM
+                                         | Coredump.FLAG_TID
+                                         | Coredump.FLAG_TIMESTAMP);
 
         Coredump.getInstance().enable(Coredump.JAVA);
         Coredump.getInstance().enable(Coredump.NATIVE);

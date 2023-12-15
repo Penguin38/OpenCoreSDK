@@ -6,8 +6,6 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
 
-import androidx.annotation.NonNull;
-
 public class Coredump {
 
     private static final String TAG = "Coredump";
@@ -28,6 +26,14 @@ public class Coredump {
     public static final int MODE_COPY = 1 << 1;
     public static final int MODE_COPY2 = 1 << 2;
     public static final int MODE_MAX = MODE_COPY2;
+
+    private int mFlag = FLAG_CORE | FLAG_TID;
+    public static final int FLAG_CORE = 1 << 0;
+    public static final int FLAG_PROCESS_COMM = 1 << 1;
+    public static final int FLAG_PID = 1 << 2;
+    public static final int FLAG_THREAD_COMM = 1 << 3;
+    public static final int FLAG_TID = 1 << 4;
+    public static final int FLAG_TIMESTAMP = 1 << 5;
 
     static {
         System.loadLibrary("opencore-jni");
@@ -77,14 +83,18 @@ public class Coredump {
     }
 
     public synchronized boolean doCoredump() {
+        return doCoredump(null);
+    }
+
+    public synchronized boolean doCoredump(String filename) {
         if (!sIsInit)
             return false;
 
-        sendEvent(OpencoreHandler.CODE_COREDUMP);
+        sendEvent(OpencoreHandler.CODE_COREDUMP, filename);
         return waitCore();
     }
 
-    public boolean waitCore() {
+    private boolean waitCore() {
         synchronized (mLock) {
             try {
                 mLock.wait();
@@ -95,18 +105,20 @@ public class Coredump {
         return true;
     }
 
-    private void onCompleted() {
+    private void onCompleted(String filepath) {
         synchronized (mLock) {
             mLock.notify();
         }
         if (mListener != null) {
-            mListener.onCompleted(mCoreDir + "/core." + Process.myPid());
+            mListener.onCompleted(filepath);
         }
     }
 
     public void setCoreDir(String dir) {
-        mCoreDir = dir;
-        native_setCoreDir(dir);
+        if (dir != null) {
+            mCoreDir = dir;
+            native_setCoreDir(dir);
+        }
     }
 
     public void setCoreMode(int mode) {
@@ -118,12 +130,18 @@ public class Coredump {
         native_setCoreMode(mCoreMode);
     }
 
+    public void setCoreFlag(int flag) {
+        mFlag = flag;
+        native_setCoreFlag(mFlag);
+    }
+
     public native String getVersion();
     private native boolean native_enable();
     private native boolean native_diable();
-    private native boolean native_doCoredump();
+    private native boolean native_doCoredump(String filename);
     private native void native_setCoreDir(String dir);
     private native void native_setCoreMode(int mode);
+    private native void native_setCoreFlag(int flag);
 
     private static class OpencoreHandler extends Handler {
         public static final int CODE_COREDUMP = 1;
@@ -136,23 +154,35 @@ public class Coredump {
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
-                case CODE_COREDUMP:
-                    Coredump.getInstance().native_doCoredump();
-                    break;
-                case CODE_COREDUMP_COMPLETED:
-                    Coredump.getInstance().onCompleted();
-                    break;
+                case CODE_COREDUMP: {
+                    if (msg.obj instanceof String) {
+                        Coredump.getInstance().native_doCoredump((String)msg.obj);
+                    } else {
+                        Coredump.getInstance().native_doCoredump(null);
+                    }
+                } break;
+                case CODE_COREDUMP_COMPLETED: {
+                    if (msg.obj instanceof String) {
+                        Coredump.getInstance().onCompleted((String)msg.obj);
+                    } else {
+                        Coredump.getInstance().onCompleted(null);
+                    }
+                } break;
             }
         }
     }
 
     private void sendEvent(int code) {
-        Message msg = Message.obtain(mCoredumpWork, code);
+        sendEvent(code, null);
+    }
+
+    private void sendEvent(int code, String filename) {
+        Message msg = Message.obtain(mCoredumpWork, code, filename);
         msg.sendToTarget();
     }
 
-    private static void callbackEvent() {
-        Coredump.getInstance().sendEvent(OpencoreHandler.CODE_COREDUMP_COMPLETED);
+    private static void callbackEvent(String filepath) {
+        Coredump.getInstance().sendEvent(OpencoreHandler.CODE_COREDUMP_COMPLETED, filepath);
     }
 
     public static interface Listener {
@@ -182,7 +212,7 @@ public class Coredump {
         }
 
         @Override
-        public void uncaughtException(@NonNull Thread thread, @NonNull Throwable throwable) {
+        public void uncaughtException(Thread thread, Throwable throwable) {
             disableJavaCrash();
             Coredump.getInstance().doCoredump();
             Process.killProcess(Process.myPid());

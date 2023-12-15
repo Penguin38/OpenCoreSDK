@@ -377,7 +377,9 @@ void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
         }
     }
 
-    ParseSelfMapsVma();
+    if (mode != MODE_COPY2)
+        ParseSelfMapsVma();
+
     while(index < ehdr.e_phnum - 1) {
         if (phdr[index].p_filesz > 0) {
             switch (mode) {
@@ -529,16 +531,14 @@ void OpencoreImpl::Finish()
     JNI_LOGI("Coredump Done.");
 }
 
-bool OpencoreImpl::DoCoreDump()
+bool OpencoreImpl::DoCoreDump(std::string& filename)
 {
     pid_t child = fork();
     if (child == 0) {
         disable();
         StopAllThread(getppid());
 
-        char filename[256];
-        snprintf(filename, sizeof(filename), "%s/core.%d", GetCoreDir().c_str(), getppid());
-        FILE* fp = fopen(filename, "wb");
+        FILE* fp = fopen(filename.c_str(), "wb");
         if (fp) {
             Prepare(filename);
 
@@ -565,10 +565,10 @@ bool OpencoreImpl::DoCoreDump()
             Finish();
             fclose(fp);
         } else {
-            JNI_LOGE("%s %s: %s\n", __func__ , filename, strerror(errno));
+            JNI_LOGE("%s %s: %s\n", __func__ , filename.c_str(), strerror(errno));
         }
 
-        ContinueAllThread(getppid());
+        // ContinueAllThread(getppid());
         kill(getpid(), 9);
     } else if (child > 0) {
         JNI_LOGI("Wait (%d) coredump", child);

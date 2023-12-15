@@ -3,10 +3,15 @@ package penguin.opencore.tester;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
+import android.os.Process;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 import penguin.opencore.sdk.Coredump;
 
 public class MainActivity extends AppCompatActivity
@@ -49,7 +54,9 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void doDirectJavaCore() {
-        Coredump.getInstance().doCoredump();
+        SimpleDateFormat format = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss");
+        Date date = new Date(System.currentTimeMillis());
+        Coredump.getInstance().doCoredump(format.format(date) + ".core." + Process.myTid());
     }
 
     private void doAbort() {
