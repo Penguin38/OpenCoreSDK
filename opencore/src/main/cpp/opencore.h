@@ -54,8 +54,9 @@
                                     ----------
 */
 #define NT_GNU_PROPERTY_TYPE_0 5
+#define OPENCORE_VERSION "Opencore-sdk-1.3.6"
 
-typedef void (*DumpCallback)(bool java, std::string& filepath);
+typedef void (*DumpCallback)(bool java, const char* path);
 
 class Opencore {
 public:
@@ -83,12 +84,13 @@ public:
     static void setCallback(DumpCallback cb);
     static void setMode(int mode);
     static void setFlag(int flag);
+    static const char* getVersion() { return OPENCORE_VERSION; }
 
     Opencore() {
         mode = MODE_COPY2;
         flag = FLAG_CORE | FLAG_TID;
     }
-    virtual bool DoCoreDump(std::string& filename) = 0;
+    virtual bool DoCoreDump(const char* filename) = 0;
     std::string GetCoreDir() { return dir; }
     DumpCallback GetCallback() { return cb; }
     int GetMode() { return mode; }

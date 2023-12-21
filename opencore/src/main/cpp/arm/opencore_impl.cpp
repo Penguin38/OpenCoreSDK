@@ -493,9 +493,9 @@ void OpencoreImpl::ContinueAllThread(pid_t pid)
     }
 }
 
-void OpencoreImpl::Prepare(std::string filename)
+void OpencoreImpl::Prepare(const char* filename)
 {
-    JNI_LOGI("Coredump %s ...", filename.c_str());
+    JNI_LOGI("Coredump %s ...", filename);
     memset(&ehdr, 0, sizeof(Elf32_Ehdr));
     memset(&note, 0, sizeof(Elf32_Phdr));
     phnum = 0;
@@ -531,14 +531,14 @@ void OpencoreImpl::Finish()
     JNI_LOGI("Coredump Done.");
 }
 
-bool OpencoreImpl::DoCoreDump(std::string& filename)
+bool OpencoreImpl::DoCoreDump(const char* filename)
 {
     pid_t child = fork();
     if (child == 0) {
         disable();
         StopAllThread(getppid());
 
-        FILE* fp = fopen(filename.c_str(), "wb");
+        FILE* fp = fopen(filename, "wb");
         if (fp) {
             Prepare(filename);
 
@@ -565,7 +565,7 @@ bool OpencoreImpl::DoCoreDump(std::string& filename)
             Finish();
             fclose(fp);
         } else {
-            JNI_LOGE("%s %s: %s\n", __func__ , filename.c_str(), strerror(errno));
+            JNI_LOGE("%s %s: %s\n", __func__ , filename, strerror(errno));
         }
 
         // ContinueAllThread(getppid());

@@ -55,10 +55,10 @@ constexpr uint64_t RoundUp(uint64_t x, uint64_t n) {
 class OpencoreImpl : public Opencore {
 public:
     static OpencoreImpl* GetInstance();
-    bool DoCoreDump(std::string& filename);
+    bool DoCoreDump(const char* filename);
     void StopAllThread(pid_t pid);
     void ContinueAllThread(pid_t pid);
-    void Prepare(std::string filename);
+    void Prepare(const char* filename);
     void ParseSelfMapsVma();
     bool InSelfMaps(uint64_t load);
     void ParseProcessMapsVma(pid_t pid);

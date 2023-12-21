@@ -137,7 +137,7 @@ void Opencore::dump(bool java, const char* filename)
         if (!prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY))
             need_restore_ptrace = true;
 
-        impl->DoCoreDump(output);
+        impl->DoCoreDump(output.c_str());
 
         if (need_restore_dumpable) prctl(PR_SET_DUMPABLE, ori_dumpable);
         if (need_restore_ptrace) prctl(PR_SET_PTRACER, 0);
@@ -147,7 +147,7 @@ void Opencore::dump(bool java, const char* filename)
 
     DumpCallback callback = impl->GetCallback();
     if (callback) {
-        callback(java, output);
+        callback(java, output.c_str());
     }
 }
 

@@ -19,30 +19,24 @@ struct userdata {
 
 static userdata gUser;
 
-struct callback_data {
-    std::string path;
-};
-
 static void penguin_opencore_sdk_coredump_docallback(void *arg)
 {
     if (gUser.gCoredump && gUser.gCallbackEvent) {
-        callback_data *cbp = reinterpret_cast<callback_data *>(arg);
+        const char* path = reinterpret_cast<const char *>(arg);
         JNIEnv *env = android::AndroidJNI::getJNIEnv();
-        jstring filepath = env->NewStringUTF(cbp->path.c_str());
+        jstring filepath = env->NewStringUTF(path);
         env->CallStaticVoidMethod(gUser.gCoredump, gUser.gCallbackEvent, filepath);
     } else {
         JNI_LOGE("coredump callback err!");
     }
 }
 
-static void penguin_opencore_sdk_coredump_callback(bool java, std::string& filepath)
+static void penguin_opencore_sdk_coredump_callback(bool java, const char* filepath)
 {
-    callback_data cb;
-    cb.path = filepath;
     if (!java) {
-        android::AndroidJNI::createJavaThread("opencore-cb", penguin_opencore_sdk_coredump_docallback, &cb);
+        android::AndroidJNI::createJavaThread("opencore-cb", penguin_opencore_sdk_coredump_docallback, (void *)filepath);
     } else {
-        penguin_opencore_sdk_coredump_docallback(&cb);
+        penguin_opencore_sdk_coredump_docallback((void *)filepath);
     }
 }
 
@@ -50,7 +44,7 @@ extern "C"
 JNIEXPORT jstring JNICALL
 Java_penguin_opencore_sdk_Coredump_getVersion(JNIEnv *env, jobject /*thiz*/)
 {
-    return env->NewStringUTF("Opencore-sdk-1.3.5");
+    return env->NewStringUTF(Opencore::getVersion());
 }
 
 extern "C"
@@ -119,7 +113,7 @@ extern "C"
 JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM *vm, void * /*reserved*/)
 {
-    JNI_LOGI("Init opencore environment..");
+    JNI_LOGI("Init %s environment..", Opencore::getVersion());
     android::AndroidJNI::init(vm);
     return JNI_VERSION_1_4;
 }
