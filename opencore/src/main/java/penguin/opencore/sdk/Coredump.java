@@ -5,6 +5,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
+import android.util.Log;
 
 public class Coredump {
 
@@ -36,7 +37,11 @@ public class Coredump {
     public static final int FLAG_TIMESTAMP = 1 << 5;
 
     static {
-        System.loadLibrary("opencore-jni");
+        try {
+            System.loadLibrary("opencore-jni");
+        } catch(UnsatisfiedLinkError e) {
+            Log.e(TAG, "Can't load opencore-jni", e);
+        }
     }
 
     private Coredump() {}
@@ -50,10 +55,12 @@ public class Coredump {
             HandlerThread core = new HandlerThread("opencore-bg");
             core.start();
             mCoredumpWork = new OpencoreHandler(core.getLooper());
+            native_init((Class<Coredump>) getClass());
             sIsInit = true;
-            return true;
+        } else {
+            Log.i(TAG, "Already init opencore.");
         }
-        throw new IllegalStateException();
+        return sIsInit;
     }
 
     public synchronized boolean enable(int type) {
@@ -105,10 +112,13 @@ public class Coredump {
         return true;
     }
 
-    private void onCompleted(String filepath) {
+    private void notifyCore() {
         synchronized (mLock) {
             mLock.notify();
         }
+    }
+
+    private void onCompleted(String filepath) {
         if (mListener != null) {
             mListener.onCompleted(filepath);
         }
@@ -136,6 +146,7 @@ public class Coredump {
     }
 
     public native String getVersion();
+    private native void native_init(Class<Coredump> clazz);
     private native boolean native_enable();
     private native boolean native_diable();
     private native boolean native_doCoredump(String filename);
@@ -160,6 +171,7 @@ public class Coredump {
                     } else {
                         Coredump.getInstance().native_doCoredump(null);
                     }
+                    Coredump.getInstance().notifyCore();
                 } break;
                 case CODE_COREDUMP_COMPLETED: {
                     if (msg.obj instanceof String) {
@@ -213,9 +225,13 @@ public class Coredump {
 
         @Override
         public void uncaughtException(Thread thread, Throwable throwable) {
-            disableJavaCrash();
-            Coredump.getInstance().doCoredump();
-            Process.killProcess(Process.myPid());
+            try {
+                disableJavaCrash();
+                Coredump.getInstance().doCoredump();
+            } finally {
+                Process.killProcess(Process.myPid());
+                System.exit(10);
+            }
         }
     }
 }
