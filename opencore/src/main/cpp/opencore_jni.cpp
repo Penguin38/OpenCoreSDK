@@ -34,7 +34,11 @@ static void penguin_opencore_sdk_coredump_docallback(void *arg)
 static void penguin_opencore_sdk_coredump_callback(bool java, const char* filepath)
 {
     if (!java) {
-        android::AndroidJNI::createJavaThread("opencore-cb", penguin_opencore_sdk_coredump_docallback, (void *)filepath);
+        pthread_t thread = (pthread_t) android::AndroidJNI::createJavaThread("opencore-cb",
+                                                                penguin_opencore_sdk_coredump_docallback,
+                                                                (void *)filepath);
+        if (thread > 0)
+            pthread_join(thread, NULL);
     } else {
         penguin_opencore_sdk_coredump_docallback((void *)filepath);
     }

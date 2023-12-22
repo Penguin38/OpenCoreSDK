@@ -11,6 +11,7 @@ import android.widget.Toast;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.ArrayList;
 
 import penguin.opencore.sdk.Coredump;
 
@@ -32,6 +33,7 @@ public class MainActivity extends AppCompatActivity
         findViewById(R.id.button2).setOnClickListener(this);
         findViewById(R.id.button3).setOnClickListener(this);
         findViewById(R.id.button4).setOnClickListener(this);
+        findViewById(R.id.button5).setOnClickListener(this);
     }
 
     private void doJavaCrash() {
@@ -68,6 +70,18 @@ public class MainActivity extends AppCompatActivity
         }).start();
     }
 
+    private void doOOM() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                ArrayList<LeakMemory> array = new ArrayList<LeakMemory>();
+                while (true) {
+                    array.add(new LeakMemory());
+                }
+            }
+        }).start();
+    }
+
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
@@ -82,6 +96,9 @@ public class MainActivity extends AppCompatActivity
                 break;
             case R.id.button4:
                 doAbort();
+                break;
+            case R.id.button5:
+                doOOM();
                 break;
         }
     }
