@@ -28,7 +28,8 @@ Opencore* Opencore::GetInstance()
     return nullptr;
 }
 
-static pthread_mutex_t gLock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t g_handle_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t g_switch_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct sigaction g_restore_action[5];
 
 void Opencore::dump(bool java, const char* filename)
@@ -65,8 +66,13 @@ void Opencore::dump(bool java, const char* filename)
                     memset(&comm, 0x0, sizeof(comm));
                     int rc = read(fd, &comm, sizeof(comm) - 1);
                     if (rc > 0) {
-                        if (rc < sizeof(comm) - 1)
-                            comm[rc - 1] = 0;
+                        for (int i = 0; i < rc; i++) {
+                            if (comm[i] == '\n') {
+                                comm[i] = 0;
+                                break;
+                            }
+                        }
+                        comm[rc] = 0;
                         output.append(comm);
                     } else {
                         output.append("unknown");
@@ -99,8 +105,13 @@ void Opencore::dump(bool java, const char* filename)
                     memset(&comm, 0x0, sizeof(comm));
                     int rc = read(fd, &comm, sizeof(comm) - 1);
                     if (rc > 0) {
-                        if (rc < sizeof(comm) - 1)
-                            comm[rc - 1] = 0;
+                        for (int i = 0; i < rc; i++) {
+                            if (comm[i] == '\n') {
+                                comm[i] = 0;
+                                break;
+                            }
+                        }
+                        comm[rc] = 0;
                         output.append(comm);
                     } else {
                         output.append("unknown");
@@ -153,33 +164,38 @@ void Opencore::dump(bool java, const char* filename)
 
 void Opencore::HandleSignal(int sig)
 {
-    pthread_mutex_lock(&gLock);
+    pthread_mutex_lock(&g_handle_lock);
     disable();
     dump(false, nullptr);
     raise(sig);
-    pthread_mutex_unlock(&gLock);
+    pthread_mutex_unlock(&g_handle_lock);
 }
 
 bool Opencore::enable()
 {
     Opencore* impl = GetInstance();
     if (impl) {
-        struct sigaction stact;
-        struct sigaction oldact[5];
-        memset(&stact, 0, sizeof(stact));
-        stact.sa_handler = Opencore::HandleSignal;
+        pthread_mutex_lock(&g_switch_lock);
+        if (!impl->GetState()) {
+            struct sigaction stact;
+            struct sigaction oldact[5];
+            memset(&stact, 0, sizeof(stact));
+            stact.sa_handler = Opencore::HandleSignal;
 
-        sigaction(SIGSEGV, &stact, &oldact[0]);
-        sigaction(SIGABRT, &stact, &oldact[1]);
-        sigaction(SIGBUS, &stact, &oldact[2]);
-        sigaction(SIGILL, &stact, &oldact[3]);
-        sigaction(SIGFPE, &stact, &oldact[4]);
+            sigaction(SIGSEGV, &stact, &oldact[0]);
+            sigaction(SIGABRT, &stact, &oldact[1]);
+            sigaction(SIGBUS, &stact, &oldact[2]);
+            sigaction(SIGILL, &stact, &oldact[3]);
+            sigaction(SIGFPE, &stact, &oldact[4]);
 
-        for (int index = 0; index < 5; index++) {
-            if (oldact[index].sa_handler != Opencore::HandleSignal) {
-                memcpy(&g_restore_action[index], &oldact[index], sizeof(struct sigaction));
+            for (int index = 0; index < 5; index++) {
+                if (oldact[index].sa_handler != Opencore::HandleSignal) {
+                    memcpy(&g_restore_action[index], &oldact[index], sizeof(struct sigaction));
+                }
             }
+            impl->SetState(STATE_ON);
         }
+        pthread_mutex_unlock(&g_switch_lock);
         return true;
     }
     return false;
@@ -189,11 +205,16 @@ bool Opencore::disable()
 {
     Opencore* impl = GetInstance();
     if (impl) {
-        sigaction(SIGSEGV, &g_restore_action[0], NULL);
-        sigaction(SIGABRT, &g_restore_action[1], NULL);
-        sigaction(SIGBUS, &g_restore_action[2], NULL);
-        sigaction(SIGILL, &g_restore_action[3], NULL);
-        sigaction(SIGFPE, &g_restore_action[4], NULL);
+        pthread_mutex_lock(&g_switch_lock);
+        if (impl->GetState()) {
+            sigaction(SIGSEGV, &g_restore_action[0], NULL);
+            sigaction(SIGABRT, &g_restore_action[1], NULL);
+            sigaction(SIGBUS, &g_restore_action[2], NULL);
+            sigaction(SIGILL, &g_restore_action[3], NULL);
+            sigaction(SIGFPE, &g_restore_action[4], NULL);
+            impl->SetState(STATE_OFF);
+        }
+        pthread_mutex_unlock(&g_switch_lock);
         return true;
     }
     return false;

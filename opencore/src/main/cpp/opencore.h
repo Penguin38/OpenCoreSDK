@@ -74,6 +74,9 @@ public:
     static const int FLAG_ALL = FLAG_CORE | FLAG_PROCESS_COMM | FLAG_PID
                               | FLAG_THREAD_COMM | FLAG_TID | FLAG_TIMESTAMP;
 
+    static const int STATE_ON = 1;
+    static const int STATE_OFF = 0;
+
     static Opencore* GetInstance();
     static bool IsFilterSegment(std::string segment);
     static void HandleSignal(int);
@@ -89,6 +92,7 @@ public:
     Opencore() {
         mode = MODE_COPY2;
         flag = FLAG_CORE | FLAG_TID;
+        state = STATE_OFF;
     }
     virtual bool DoCoreDump(const char* filename) = 0;
     std::string GetCoreDir() { return dir; }
@@ -100,11 +104,14 @@ private:
     void SetCallback(DumpCallback c) { cb = c; }
     void SetMode(int m) { mode = m; }
     void SetFlag(int f) { flag = f; }
+    void SetState(int s) { state = s; }
+    bool GetState() { return state == STATE_ON; }
 
     DumpCallback cb;
     std::string dir;
     int mode;
     int flag;
+    int state;
 };
 
 #endif //OPENCORESDK_OPENCORE_H

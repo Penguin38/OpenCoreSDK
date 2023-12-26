@@ -12,7 +12,7 @@ public class Coredump {
     private static final String TAG = "Coredump";
     private static final Coredump sInstance = new Coredump();
 
-    private static boolean sIsInit = false;
+    private static volatile boolean sIsInit = false;
     private OpencoreHandler mCoredumpWork;
     private final Object mLock = new Object();
     private String mCoreDir;
@@ -64,12 +64,12 @@ public class Coredump {
     }
 
     public synchronized boolean enable(int type) {
-        if (!sIsInit)
-            return false;
-
         switch (type) {
             case JAVA:
-                return mJavaCrashHandler.enableJavaCrash();
+                if (sIsInit) {
+                    return mJavaCrashHandler.enableJavaCrash();
+                }
+                break;
             case NATIVE:
                 return native_enable();
         }
@@ -77,12 +77,12 @@ public class Coredump {
     }
 
     public synchronized boolean disable(int type) {
-        if (!sIsInit)
-            return false;
-
         switch (type) {
             case JAVA:
-                return mJavaCrashHandler.disableJavaCrash();
+                if (sIsInit) {
+                    return mJavaCrashHandler.disableJavaCrash();
+                }
+                break;
             case NATIVE:
                 return native_diable();
         }
