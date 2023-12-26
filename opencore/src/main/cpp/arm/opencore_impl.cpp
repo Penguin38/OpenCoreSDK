@@ -12,6 +12,7 @@
 #include <sys/uio.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 
 OpencoreImpl* impl = new OpencoreImpl;
 
@@ -535,6 +536,9 @@ bool OpencoreImpl::DoCoreDump(const char* filename)
 {
     pid_t child = fork();
     if (child == 0) {
+        signal(SIGALRM, Opencore::TimeoutHandle);
+        alarm(GetTimeout());
+
         disable();
         StopAllThread(getppid());
 

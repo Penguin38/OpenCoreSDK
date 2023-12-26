@@ -11,6 +11,8 @@ public class TesterApp extends Application {
 
         Coredump.getInstance().init();
 
+        Coredump.getInstance().setCoreTimeout(Coredump.DEF_TIMEOUT);
+
         //Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE | Coredump.MODE_COPY);
         //Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE);
         //Coredump.getInstance().setCoreMode(Coredump.MODE_COPY);

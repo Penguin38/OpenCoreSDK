@@ -36,6 +36,9 @@ public class Coredump {
     public static final int FLAG_TID = 1 << 4;
     public static final int FLAG_TIMESTAMP = 1 << 5;
 
+    private int mTimeout = DEF_TIMEOUT;
+    public static final int DEF_TIMEOUT = 30;
+
     static {
         try {
             System.loadLibrary("opencore-jni");
@@ -145,6 +148,11 @@ public class Coredump {
         native_setCoreFlag(mFlag);
     }
 
+    public void setCoreTimeout(int sec) {
+        mTimeout = sec;
+        native_setCoreTimeout(sec);
+    }
+
     public native String getVersion();
     private native void native_init(Class<Coredump> clazz);
     private native boolean native_enable();
@@ -153,6 +161,7 @@ public class Coredump {
     private native void native_setCoreDir(String dir);
     private native void native_setCoreMode(int mode);
     private native void native_setCoreFlag(int flag);
+    private native void native_setCoreTimeout(int sec);
 
     private static class OpencoreHandler extends Handler {
         public static final int CODE_COREDUMP = 1;

@@ -256,6 +256,20 @@ void Opencore::setFlag(int flag)
     }
 }
 
+void Opencore::setTimeout(int sec)
+{
+    Opencore* impl = GetInstance();
+    if (impl && sec > 0) {
+        impl->SetTimeout(sec);
+    }
+}
+
+void Opencore::TimeoutHandle(int)
+{
+    JNI_LOGI("Coredump timeout.");
+    _exit(0);
+}
+
 bool Opencore::IsFilterSegment(std::string segment)
 {
     if (segment == "/dev/binderfs/hwbinder"

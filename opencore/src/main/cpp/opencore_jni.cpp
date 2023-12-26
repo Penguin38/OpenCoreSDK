@@ -114,6 +114,12 @@ Java_penguin_opencore_sdk_Coredump_native_1setCoreFlag(JNIEnv *env, jobject /*th
 }
 
 extern "C"
+JNIEXPORT void JNICALL
+Java_penguin_opencore_sdk_Coredump_native_1setCoreTimeout(JNIEnv *env, jobject /*thiz*/, jint sec) {
+    Opencore::setTimeout(sec);
+}
+
+extern "C"
 JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM *vm, void * /*reserved*/)
 {
