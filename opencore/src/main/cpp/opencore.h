@@ -54,7 +54,7 @@
                                     ----------
 */
 #define NT_GNU_PROPERTY_TYPE_0 5
-#define OPENCORE_VERSION "Opencore-sdk-1.3.9"
+#define OPENCORE_VERSION "Opencore-sdk-1.4.0"
 
 typedef void (*DumpCallback)(bool java, const char* path);
 

@@ -41,7 +41,7 @@ public class Coredump {
 
     static {
         try {
-            System.loadLibrary("opencore-jni");
+            System.loadLibrary("opencore");
         } catch(UnsatisfiedLinkError e) {
             Log.e(TAG, "Can't load opencore-jni", e);
         }

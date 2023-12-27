@@ -24,5 +24,5 @@ endif()
 add_library(opencore SHARED opencore.cpp ${OPENCORE_IMPL} opencore_jni.cpp)
 target_link_libraries(opencore ${log-lib} eajni)
 
-add_library(opencore-jni SHARED opencore_jni.cpp)
-target_link_libraries(opencore-jni opencore ${log-lib} eajni)
+#add_library(opencore-jni SHARED opencore_jni.cpp)
+#target_link_libraries(opencore-jni opencore ${log-lib} eajni)
