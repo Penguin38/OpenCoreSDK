@@ -21,7 +21,7 @@ dependencyResolutionManagement {
 ```
 dependencies {
     ...
-    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.4.0'
+    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.4.1'
 }
 ```
 ## 例子
