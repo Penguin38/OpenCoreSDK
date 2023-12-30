@@ -13,6 +13,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 OpencoreImpl* impl = new OpencoreImpl;
 
@@ -40,10 +42,6 @@ void OpencoreImpl::ParserPhdr(int index, void *start, void *end, char* flags, ch
 
     if ((phdr[index].p_flags) & PF_R)
         phdr[index].p_filesz = phdr[index].p_memsz;
-
-    if (Opencore::IsFilterSegment(filename)) {
-        phdr[index].p_filesz = 0x0;
-    }
 
     phdr[index].p_align = sysconf(_SC_PAGE_SIZE);
 }
@@ -126,18 +124,23 @@ void OpencoreImpl::ParseProcessMapsVma(pid_t pid)
 
         int index = 0;
         while (fgets(line, sizeof(line), fp)) {
-            int m, fileofs;
+            int m, fileofs, inode;
             void *start, *end;
             char flags[4];
             char filename[256];
 
-            sscanf(line, "%p-%p %c%c%c%c %x %*x:%*x  %*u %[^\n] %n",
+            sscanf(line, "%p-%p %c%c%c%c %x %*x:%*x  %u %[^\n] %n",
                    &start, &end,
                    &flags[0], &flags[1], &flags[2], &flags[3],
-                   &fileofs, filename, &m);
+                   &fileofs, &inode, filename, &m);
 
             ParserPhdr(index, start, end, flags, filename);
             ParserNtFile(index, start, end, fileofs, filename);
+
+            if (Opencore::IsFilterSegment(flags, inode, filename, fileofs)) {
+                phdr[index].p_filesz = 0x0;
+            }
+
             index++;
         }
         AlignNtFile();
@@ -383,6 +386,8 @@ void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
 
     while(index < ehdr.e_phnum - 1) {
         if (phdr[index].p_filesz > 0) {
+            long current_pos = ftell(fp);
+            bool need_padd_zero = false;
             switch (mode) {
                 case MODE_PTRACE: {
                     Elf64_Addr target = phdr[index].p_vaddr;
@@ -396,18 +401,12 @@ void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
                     if (InSelfMaps(phdr[index].p_vaddr)) {
                         uint64_t ret = fwrite((void *)phdr[index].p_vaddr, phdr[index].p_memsz, 1, fp);
                         if (ret != 1) {
+                            need_padd_zero = true;
                             JNI_LOGE("[%p] write load segment fail. %s %s",
                                     (void *)phdr[index].p_vaddr, strerror(errno), maps[ntfile[index].start].c_str());
                         }
                     } else {
-                        int count = phdr[index].p_memsz / sizeof(zero);
-                        for (int i = 0; i < count; i++) {
-                            uint64_t ret = fwrite(zero, sizeof(zero), 1, fp);
-                            if (ret != 1) {
-                                JNI_LOGE("[%p] padding load segment fail. %s %s",
-                                        (void *)phdr[index].p_vaddr, strerror(errno), maps[ntfile[index].start].c_str());
-                            }
-                        }
+                        need_padd_zero = true;
                     }
                 } break;
                 case MODE_PTRACE | MODE_COPY: {
@@ -421,6 +420,7 @@ void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
                     } else {
                         uint64_t ret = fwrite((void *)phdr[index].p_vaddr, phdr[index].p_memsz, 1, fp);
                         if (ret != 1) {
+                            need_padd_zero = true;
                             JNI_LOGE("[%p] write load segment fail. %s %s",
                                     (void *)phdr[index].p_vaddr, strerror(errno), maps[ntfile[index].start].c_str());
                         }
@@ -433,15 +433,28 @@ void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
                         pread(fd, &zero, sizeof(zero), phdr[index].p_vaddr + (i * sizeof(zero)));
                         uint64_t ret = fwrite(zero, sizeof(zero), 1, fp);
                         if (ret != 1) {
+                            need_padd_zero = true;
                             JNI_LOGE("[%p] write load segment fail. %s %s",
                                     (void *)phdr[index].p_vaddr, strerror(errno), maps[ntfile[index].start].c_str());
+                            break;
                         }
-
                     }
                 } break;
                 default: {
                     // do nothing
                 } break;
+            }
+            if (need_padd_zero && current_pos > 0) {
+                memset(&zero, 0x0, sizeof(zero));
+                fseek(fp, current_pos, SEEK_SET);
+                int count = phdr[index].p_memsz / sizeof(zero);
+                for (int i = 0; i < count; i++) {
+                    uint64_t ret = fwrite(zero, sizeof(zero), 1, fp);
+                    if (ret != 1) {
+                        JNI_LOGE("[%p] padding load segment fail. %s %s",
+                                (void *)phdr[index].p_vaddr, strerror(errno), maps[ntfile[index].start].c_str());
+                    }
+                }
             }
         }
         index++;
@@ -581,4 +594,45 @@ bool OpencoreImpl::DoCoreDump(const char* filename)
         wait(&status);
     }
     return true;
+}
+
+bool OpencoreImpl::NeedFilterFile(const char* filename, int offset)
+{
+    struct stat sb;
+    int fd = open(filename, O_RDONLY);
+    if (fd < 0)
+        return true;
+
+    if (fstat(fd, &sb) < 0) {
+        close(fd);
+        return true;
+    }
+
+    char* mem = (char *)mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0x0);
+    close(fd);
+    if (mem == MAP_FAILED)
+        return true;
+
+    Elf64_Ehdr* ehdr = (Elf64_Ehdr*)mem;
+    if (strncmp(mem, ELFMAG, 4) || ehdr->e_machine != EM_AARCH64) {
+        munmap(mem, sb.st_size);
+        return true;
+    }
+
+    bool ret = true;
+    Elf64_Phdr* phdr = (Elf64_Phdr *)(mem + ehdr->e_phoff);
+    for (int index = 0; index < ehdr->e_phnum; index++) {
+        if (phdr[index].p_type != PT_LOAD)
+            continue;
+
+        int pos = align_down(phdr[index].p_offset, 0x1000);
+        int end = align_up(phdr[index].p_offset + phdr[index].p_memsz, 0x1000);
+        if (pos <= offset && offset < end) {
+            if ((phdr[index].p_flags & PF_W))
+                ret = false;
+        }
+    }
+
+    munmap(mem, sb.st_size);
+    return ret;
 }

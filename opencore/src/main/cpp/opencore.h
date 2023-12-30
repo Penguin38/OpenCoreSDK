@@ -54,9 +54,17 @@
                                     ----------
 */
 #define NT_GNU_PROPERTY_TYPE_0 5
-#define OPENCORE_VERSION "Opencore-sdk-1.4.1"
+#define OPENCORE_VERSION "Opencore-sdk-1.4.2"
 
 typedef void (*DumpCallback)(bool java, const char* path);
+
+inline int align_down(int x, int n) {
+    return (x & -n);
+}
+
+inline int align_up(int x, int n) {
+    return align_down(x + n - 1, n);
+}
 
 class Opencore {
 public:
@@ -79,10 +87,18 @@ public:
 
     static const int DEF_TIMEOUT = 30;
 
+    static const int INVALID_TID = 0;
+
+    static const int FILTER_NONE = 0x0;
+    static const int FILTER_SPECIAL_VMA = 1 << 0;
+    static const int FILTER_FILE_VMA = 1 << 1;
+    static const int FILTER_SHARED_VMA = 1 << 2;
+
     static Opencore* GetInstance();
-    static bool IsFilterSegment(std::string segment);
+    static bool IsFilterSegment(char* flags, int inode, std::string segment, int offset);
     static void HandleSignal(int);
     static void dump(bool java, const char* filename);
+    static void dump(bool java, int tid, const char* filename);
     static bool enable();
     static bool disable();
     static void setDir(const char* dir);
@@ -90,6 +106,7 @@ public:
     static void setMode(int mode);
     static void setFlag(int flag);
     static void setTimeout(int sec);
+    static void setFilter(int filter);
     static const char* getVersion() { return OPENCORE_VERSION; }
     static void TimeoutHandle(int);
 
@@ -98,21 +115,27 @@ public:
         flag = FLAG_CORE | FLAG_TID;
         state = STATE_OFF;
         timeout = DEF_TIMEOUT;
+        tid = INVALID_TID;
+        filter = FILTER_NONE;
     }
     virtual bool DoCoreDump(const char* filename) = 0;
+    virtual bool NeedFilterFile(const char* filename, int offset) = 0;
     std::string GetCoreDir() { return dir; }
     DumpCallback GetCallback() { return cb; }
     int GetMode() { return mode; }
     int GetFlag() { return flag; }
     int GetTimeout() { return timeout; }
+    int GetFilter() { return filter; }
 private:
     void SetCoreDir(std::string d) { dir = d; }
     void SetCallback(DumpCallback c) { cb = c; }
     void SetMode(int m) { mode = m; }
     void SetFlag(int f) { flag = f; }
     void SetTimeout(int t) { timeout = t; }
+    void SetFilter(int f) { filter = f; }
     void SetState(int s) { state = s; }
     bool GetState() { return state == STATE_ON; }
+    int GetTid() { return tid; }
 
     DumpCallback cb;
     std::string dir;
@@ -120,6 +143,8 @@ private:
     int flag;
     int state;
     int timeout;
+    int tid;
+    int filter;
 };
 
 #endif //OPENCORESDK_OPENCORE_H

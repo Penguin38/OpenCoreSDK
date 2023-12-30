@@ -39,6 +39,12 @@ public class Coredump {
     private int mTimeout = DEF_TIMEOUT;
     public static final int DEF_TIMEOUT = 30;
 
+    private int mFilter = FILTER_NONE;
+    public static final int FILTER_NONE = 0x0;
+    public static final int FILTER_SPECIAL_VMA = 1 << 0;
+    public static final int FILTER_FILE_VMA = 1 << 1;
+    public static final int FILTER_SHARED_VMA = 1 << 2;
+
     static {
         try {
             System.loadLibrary("opencore");
@@ -153,15 +159,21 @@ public class Coredump {
         native_setCoreTimeout(sec);
     }
 
+    public void setCoreFilter(int filter) {
+        mFilter = filter;
+        native_setCoreFilter(filter);
+    }
+
     public native String getVersion();
     private native void native_init(Class<Coredump> clazz);
     private native boolean native_enable();
     private native boolean native_diable();
-    private native boolean native_doCoredump(String filename);
+    private native boolean native_doCoredump(int tid, String filename);
     private native void native_setCoreDir(String dir);
     private native void native_setCoreMode(int mode);
     private native void native_setCoreFlag(int flag);
     private native void native_setCoreTimeout(int sec);
+    private native void native_setCoreFilter(int filter);
 
     private static class OpencoreHandler extends Handler {
         public static final int CODE_COREDUMP = 1;
@@ -176,9 +188,9 @@ public class Coredump {
             switch (msg.what) {
                 case CODE_COREDUMP: {
                     if (msg.obj instanceof String) {
-                        Coredump.getInstance().native_doCoredump((String)msg.obj);
+                        Coredump.getInstance().native_doCoredump(msg.arg1, (String)msg.obj);
                     } else {
-                        Coredump.getInstance().native_doCoredump(null);
+                        Coredump.getInstance().native_doCoredump(msg.arg1, null);
                     }
                     Coredump.getInstance().notifyCore();
                 } break;
@@ -198,7 +210,7 @@ public class Coredump {
     }
 
     private void sendEvent(int code, String filename) {
-        Message msg = Message.obtain(mCoredumpWork, code, filename);
+        Message msg = Message.obtain(mCoredumpWork, code, Process.myTid(), 0, filename);
         msg.sendToTarget();
     }
 

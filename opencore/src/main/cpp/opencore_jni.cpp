@@ -76,15 +76,15 @@ Java_penguin_opencore_sdk_Coredump_native_1diable(JNIEnv *env, jobject /*thiz*/)
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_penguin_opencore_sdk_Coredump_native_1doCoredump(JNIEnv *env, jobject /*thiz*/, jstring filename)
+Java_penguin_opencore_sdk_Coredump_native_1doCoredump(JNIEnv *env, jobject /*thiz*/, jint tid, jstring filename)
 {
     jboolean isCopy;
     if (filename != NULL) {
         const char *cstr = env->GetStringUTFChars(filename, &isCopy);
-        Opencore::dump(true, cstr);
+        Opencore::dump(true, tid, cstr);
         env->ReleaseStringUTFChars(filename, cstr);
     } else {
-        Opencore::dump(true, nullptr);
+        Opencore::dump(true, tid, nullptr);
     }
     return true;
 }
@@ -117,6 +117,12 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_penguin_opencore_sdk_Coredump_native_1setCoreTimeout(JNIEnv *env, jobject /*thiz*/, jint sec) {
     Opencore::setTimeout(sec);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_penguin_opencore_sdk_Coredump_native_1setCoreFilter(JNIEnv *env, jobject /*thiz*/, jint filter) {
+    Opencore::setFilter(filter);
 }
 
 extern "C"

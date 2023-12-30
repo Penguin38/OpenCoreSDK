@@ -56,6 +56,7 @@ class OpencoreImpl : public Opencore {
 public:
     static OpencoreImpl* GetInstance();
     bool DoCoreDump(const char* filename);
+    bool NeedFilterFile(const char* filename, int offset);
     void StopAllThread(pid_t pid);
     void ContinueAllThread(pid_t pid);
     void Prepare(const char* filename);

@@ -34,10 +34,14 @@ static struct sigaction g_restore_action[5];
 
 void Opencore::dump(bool java, const char* filename)
 {
+    Opencore::dump(java, gettid(), filename);
+}
+
+void Opencore::dump(bool java, int tid, const char* filename)
+{
     int ori_dumpable;
     int flag;
     int pid = 0;
-    int tid = 0;
     char comm[16];
     bool need_split = false;
     bool need_restore_dumpable = false;
@@ -97,7 +101,8 @@ void Opencore::dump(bool java, const char* filename)
                 if (need_split)
                     output.append("_");
 
-                tid = gettid();
+                if (!tid)
+                    tid = gettid();
                 char thread_comm_path[64];
                 snprintf(thread_comm_path, sizeof(thread_comm_path), "/proc/%d/task/%d/comm", pid, tid);
                 int fd = open(thread_comm_path, O_RDONLY);
@@ -264,21 +269,48 @@ void Opencore::setTimeout(int sec)
     }
 }
 
+void Opencore::setFilter(int filter)
+{
+    Opencore* impl = GetInstance();
+    if (impl) {
+        impl->SetFilter(filter);
+    }
+}
+
 void Opencore::TimeoutHandle(int)
 {
     JNI_LOGI("Coredump timeout.");
     _exit(0);
 }
 
-bool Opencore::IsFilterSegment(std::string segment)
+bool Opencore::IsFilterSegment(char* flags, int inode, std::string segment, int offset)
 {
-    if (segment == "/dev/binderfs/hwbinder"
-            || segment == "/dev/binderfs/binder"
-            || segment == "[vvar]"
-            || segment == "/dev/mali0"
-            //|| segment == "/memfd:jit-cache (deleted)"
-            ) {
-        return true;
+    Opencore* impl = GetInstance();
+    if (!impl)
+        return false;
+
+    int filter = impl->GetFilter();
+
+    if (filter & FILTER_SPECIAL_VMA) {
+        if (segment == "/dev/binderfs/hwbinder"
+                || segment == "/dev/binderfs/binder"
+                || segment == "[vvar]"
+                || segment == "/dev/mali0"
+                //|| segment == "/memfd:jit-cache (deleted)"
+           ) {
+            return true;
+        }
     }
+
+    if (filter & FILTER_FILE_VMA) {
+        if (inode > 0 && flags[1] == '-')
+            return impl->NeedFilterFile(segment.c_str(), offset);
+    }
+
+    if (filter & FILTER_SHARED_VMA) {
+        if (flags[3] == 's' || flags[3] == 'S')
+            return true;
+    }
+
     return false;
 }
