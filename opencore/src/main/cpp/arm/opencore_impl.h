@@ -101,6 +101,7 @@ private:
     int auxvnum;
     Elf32_ntfile *ntfile;
     int fileslen;
+    std::vector<pid_t> pids;
     std::vector<uint8_t> buffer;
     std::map<uint32_t, std::string> maps;
     std::map<uint32_t, std::string> self_maps;

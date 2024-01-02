@@ -5,6 +5,10 @@
 #include <string>
 
 #define ELFCOREMAGIC "CORE"
+#define NOTE_CORE_NAME_SZ 5
+#define ELFLINUXMAGIC "LINUX"
+#define NOTE_LINUX_NAME_SZ 6
+
 /*
              ---------- <-
             |          |  \
@@ -53,18 +57,8 @@
                                    |          |
                                     ----------
 */
-#define NT_GNU_PROPERTY_TYPE_0 5
 #define OPENCORE_VERSION "Opencore-sdk-1.4.2"
-
 typedef void (*DumpCallback)(bool java, const char* path);
-
-inline int align_down(int x, int n) {
-    return (x & -n);
-}
-
-inline int align_up(int x, int n) {
-    return align_down(x + n - 1, n);
-}
 
 class Opencore {
 public:

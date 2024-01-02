@@ -16,6 +16,9 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
+#define NT_ARM_PAC_ENABLED_KEYS 0x40A
+#define GENMASK(h, l) (((1ULL<<(h+1))-1)&(~((1ULL<<l)-1)))
+
 OpencoreImpl* impl = new OpencoreImpl;
 
 OpencoreImpl* OpencoreImpl::GetInstance()
@@ -178,47 +181,26 @@ void OpencoreImpl::CreateCoreNoteHeader()
 
 void OpencoreImpl::CreateCorePrStatus(pid_t pid)
 {
-    char task_dir[32];
-    struct dirent *entry;
-    snprintf(task_dir, sizeof(task_dir), "/proc/%d/task", pid);
-    DIR *dp;
-    dp = opendir(task_dir);
-    if (dp) {
-        while((entry=readdir(dp)) != NULL) {
-            if(!strncmp(entry->d_name, ".", 1))
+    if (pids.size()) {
+        prnum = pids.size();
+        prstatus = (Elf64_prstatus *)malloc(prnum * sizeof(Elf64_prstatus));
+        memset(prstatus, 0, prnum * sizeof(Elf64_prstatus));
+
+        for (int index = 0; index < prnum; index++) {
+            pid_t tid = pids[index];
+            prstatus[index].pr_pid = tid;
+
+            uintptr_t regset = 1;
+            struct iovec ioVec;
+
+            ioVec.iov_base = &prstatus[index].pr_reg;
+            ioVec.iov_len = sizeof(core_arm64_pt_regs);
+
+            if (ptrace(PTRACE_GETREGSET, tid, regset, &ioVec) < 0) {
+                JNI_LOGI("%s %d: %s\n", __func__ , tid, strerror(errno));
                 continue;
-            prnum++;
-        }
-
-        if (prnum) {
-            prstatus = (Elf64_prstatus *)malloc(prnum * sizeof(Elf64_prstatus));
-            memset(prstatus, 0, prnum * sizeof(Elf64_prstatus));
-            rewinddir(dp);
-
-            int index = 0;
-            while((entry=readdir(dp)) != NULL) {
-                if(!strncmp(entry->d_name, ".", 1))
-                    continue;
-
-                pid_t tid = atoi(entry->d_name);
-                prstatus[index].pr_pid = tid;
-
-                uintptr_t regset = 1;
-                struct iovec ioVec;
-
-                ioVec.iov_base = &prstatus[index].pr_reg;
-                ioVec.iov_len = sizeof(core_arm64_pt_regs);
-
-                if (ptrace(PTRACE_GETREGSET, tid, regset, &ioVec) < 0) {
-                    JNI_LOGI("%s %d: %s\n", __func__ , tid, strerror(errno));
-                    index++;
-                    continue;
-                }
-
-                index++;
             }
         }
-        closedir(dp);
     }
 }
 
@@ -258,6 +240,9 @@ void OpencoreImpl::WriteCoreNoteHeader(FILE* fp)
 {
     note.p_filesz = (sizeof(Elf64_prstatus) + sizeof(Elf64_Nhdr) + 8) * prnum;
     note.p_filesz += sizeof(Elf64_auxv) * auxvnum + sizeof(Elf64_Nhdr) + 8;
+    note.p_filesz += ((sizeof(user_pac_mask) + sizeof(Elf64_Nhdr) + 8)  // NT_ARM_PAC_MASK
+                     +(sizeof(uint64_t) + sizeof(Elf64_Nhdr) + 8)       // NT_ARM_PAC_ENABLED_KEYS
+                     ) * prnum;
     note.p_filesz += sizeof(Elf64_ntfile) * phnum + sizeof(Elf64_Nhdr) + 8 + 2 * sizeof(unsigned long) + fileslen;
     fwrite((void *)&note, sizeof(Elf64_Phdr), 1, fp);
 }
@@ -284,19 +269,20 @@ void OpencoreImpl::WriteCoreProgramHeaders(FILE* fp)
 void OpencoreImpl::WriteCorePrStatus(FILE* fp)
 {
     Elf64_Nhdr elf_nhdr;
-    elf_nhdr.n_namesz = NT_GNU_PROPERTY_TYPE_0;
+    elf_nhdr.n_namesz = NOTE_CORE_NAME_SZ;
     elf_nhdr.n_descsz = sizeof(Elf64_prstatus);
     elf_nhdr.n_type = NT_PRSTATUS;
 
     char magic[8];
     memset(magic, 0, sizeof(magic));
-    snprintf(magic, 5, ELFCOREMAGIC);
+    snprintf(magic, NOTE_CORE_NAME_SZ, ELFCOREMAGIC);
 
     int index = 0;
     while (index < prnum) {
         fwrite(&elf_nhdr, sizeof(Elf64_Nhdr), 1, fp);
         fwrite(magic, sizeof(magic), 1, fp);
         fwrite(&prstatus[index], sizeof(Elf64_prstatus), 1, fp);
+        WriteCorePAC(prstatus[index].pr_pid ,fp);
         index++;
     }
 }
@@ -304,13 +290,13 @@ void OpencoreImpl::WriteCorePrStatus(FILE* fp)
 void OpencoreImpl::WriteCoreAUXV(FILE* fp)
 {
     Elf64_Nhdr elf_nhdr;
-    elf_nhdr.n_namesz = NT_GNU_PROPERTY_TYPE_0;
+    elf_nhdr.n_namesz = NOTE_CORE_NAME_SZ;
     elf_nhdr.n_descsz = sizeof(Elf64_auxv) * auxvnum;
     elf_nhdr.n_type = NT_AUXV;
 
     char magic[8];
     memset(magic, 0, sizeof(magic));
-    snprintf(magic, 5, ELFCOREMAGIC);
+    snprintf(magic, NOTE_CORE_NAME_SZ, ELFCOREMAGIC);
 
     fwrite(&elf_nhdr, sizeof(Elf64_Nhdr), 1, fp);
     fwrite(magic, sizeof(magic), 1, fp);
@@ -322,16 +308,63 @@ void OpencoreImpl::WriteCoreAUXV(FILE* fp)
     }
 }
 
+void OpencoreImpl::WriteCorePAC(pid_t tid, FILE* fp)
+{
+    // NT_ARM_PAC_MASK
+    Elf64_Nhdr elf_nhdr;
+    elf_nhdr.n_namesz = NOTE_LINUX_NAME_SZ;
+    elf_nhdr.n_descsz = sizeof(user_pac_mask);
+    elf_nhdr.n_type = NT_ARM_PAC_MASK;
+
+    char magic[8];
+    memset(magic, 0, sizeof(magic));
+    snprintf(magic, NOTE_LINUX_NAME_SZ, ELFLINUXMAGIC);
+
+    fwrite(&elf_nhdr, sizeof(Elf64_Nhdr), 1, fp);
+    fwrite(magic, sizeof(magic), 1, fp);
+
+    user_pac_mask uregs;
+    struct iovec pac_mask_iov = {
+        &uregs,
+        sizeof(user_pac_mask),
+    };
+    if (ptrace(PTRACE_GETREGSET, tid, NT_ARM_PAC_MASK,
+                reinterpret_cast<void*>(&pac_mask_iov)) == -1) {
+        uint64_t mask = GENMASK(54, DEF_VA_BITS);
+        uregs.data_mask = mask;
+        uregs.insn_mask = mask;
+    }
+    fwrite(&uregs, sizeof(user_pac_mask), 1, fp);
+
+    // NT_ARM_PAC_ENABLED_KEYS
+    elf_nhdr.n_descsz = sizeof(uint64_t);
+    elf_nhdr.n_type = NT_ARM_PAC_ENABLED_KEYS;
+
+    fwrite(&elf_nhdr, sizeof(Elf64_Nhdr), 1, fp);
+    fwrite(magic, sizeof(magic), 1, fp);
+
+    uint64_t pac_enabled_keys;
+    struct iovec pac_enabled_keys_iov = {
+        &pac_enabled_keys,
+        sizeof(pac_enabled_keys),
+    };
+    if (ptrace(PTRACE_GETREGSET, tid, NT_ARM_PAC_ENABLED_KEYS,
+                reinterpret_cast<void*>(&pac_enabled_keys_iov)) == -1) {
+        pac_enabled_keys = 0;
+    }
+    fwrite(&pac_enabled_keys, sizeof(uint64_t), 1, fp);
+}
+
 void OpencoreImpl::WriteNtFile(FILE* fp)
 {
     Elf64_Nhdr elf_nhdr;
-    elf_nhdr.n_namesz = NT_GNU_PROPERTY_TYPE_0;
+    elf_nhdr.n_namesz = NOTE_CORE_NAME_SZ;
     elf_nhdr.n_descsz = sizeof(Elf64_ntfile) * phnum + 2 * sizeof(unsigned long) + fileslen;
     elf_nhdr.n_type = NT_FILE;
 
     char magic[8];
     memset(magic, 0, sizeof(magic));
-    snprintf(magic, 5, ELFCOREMAGIC);
+    snprintf(magic, NOTE_CORE_NAME_SZ, ELFCOREMAGIC);
 
     fwrite(&elf_nhdr, sizeof(Elf64_Nhdr), 1, fp);
     fwrite(magic, sizeof(magic), 1, fp);
@@ -480,6 +513,7 @@ void OpencoreImpl::StopAllThread(pid_t pid)
                 JNI_LOGI("%s %d: %s\n", __func__ , tid, strerror(errno));
                 continue;
             }
+            pids.push_back(tid);
             int status = 0;
             waitpid(tid, &status, WUNTRACED);
         }
@@ -489,22 +523,12 @@ void OpencoreImpl::StopAllThread(pid_t pid)
 
 void OpencoreImpl::ContinueAllThread(pid_t pid)
 {
-    char task_dir[32];
-    struct dirent *entry;
-    snprintf(task_dir, sizeof(task_dir), "/proc/%d/task", pid);
-    DIR *dp = opendir(task_dir);
-    if (dp) {
-        while ((entry=readdir(dp)) != NULL) {
-            if (!strncmp(entry->d_name, ".", 1)) {
-                continue;
-            }
-            pid_t tid = atoi(entry->d_name);
-            if (ptrace(PTRACE_DETACH, tid, NULL, 0) < 0) {
-                JNI_LOGI("%s %d: %s\n", __func__ , tid, strerror(errno));
-                continue;
-            }
+    for (int index = 0; index < pids.size(); index++) {
+        pid_t tid = pids[index];
+        if (ptrace(PTRACE_DETACH, tid, NULL, 0) < 0) {
+            JNI_LOGI("%s %d: %s\n", __func__ , tid, strerror(errno));
+            continue;
         }
-        closedir(dp);
     }
 }
 
@@ -517,6 +541,7 @@ void OpencoreImpl::Prepare(const char* filename)
     prnum = 0;
     auxvnum = 0;
     fileslen = 0;
+    pids.clear();
     buffer.clear();
     maps.clear();
     self_maps.clear();
@@ -554,12 +579,11 @@ bool OpencoreImpl::DoCoreDump(const char* filename)
         alarm(GetTimeout());
 
         disable();
+        Prepare(filename);
         StopAllThread(getppid());
 
         FILE* fp = fopen(filename, "wb");
         if (fp) {
-            Prepare(filename);
-
             ParseProcessMapsVma(getppid());
             CreateCoreHeader();
             CreateCoreNoteHeader();
@@ -625,8 +649,8 @@ bool OpencoreImpl::NeedFilterFile(const char* filename, int offset)
         if (phdr[index].p_type != PT_LOAD)
             continue;
 
-        int pos = align_down(phdr[index].p_offset, 0x1000);
-        int end = align_up(phdr[index].p_offset + phdr[index].p_memsz, 0x1000);
+        int pos = RoundDown(phdr[index].p_offset, 0x1000);
+        int end = RoundUp(phdr[index].p_offset + phdr[index].p_memsz, 0x1000);
         if (pos <= offset && offset < end) {
             if ((phdr[index].p_flags & PF_W))
                 ret = false;

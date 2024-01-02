@@ -178,47 +178,26 @@ void OpencoreImpl::CreateCoreNoteHeader()
 
 void OpencoreImpl::CreateCorePrStatus(pid_t pid)
 {
-    char task_dir[32];
-    struct dirent *entry;
-    snprintf(task_dir, sizeof(task_dir), "/proc/%d/task", pid);
-    DIR *dp;
-    dp = opendir(task_dir);
-    if (dp) {
-        while((entry=readdir(dp)) != NULL) {
-            if(!strncmp(entry->d_name, ".", 1))
+    if (pids.size()) {
+        prnum = pids.size();
+        prstatus = (Elf32_prstatus *)malloc(prnum * sizeof(Elf32_prstatus));
+        memset(prstatus, 0, prnum * sizeof(Elf32_prstatus));
+
+        for (int index = 0; index < prnum; index++) {
+            pid_t tid = pids[index];
+            prstatus[index].pr_pid = tid;
+
+            uintptr_t regset = 1;
+            struct iovec ioVec;
+
+            ioVec.iov_base = &prstatus[index].pr_reg;
+            ioVec.iov_len = sizeof(core_arm_pt_regs);
+
+            if (ptrace(PTRACE_GETREGSET, tid, regset, &ioVec) < 0) {
+                JNI_LOGI("%s %d: %s\n", __func__ , tid, strerror(errno));
                 continue;
-            prnum++;
-        }
-
-        if (prnum) {
-            prstatus = (Elf32_prstatus *)malloc(prnum * sizeof(Elf32_prstatus));
-            memset(prstatus, 0, prnum * sizeof(Elf32_prstatus));
-            rewinddir(dp);
-
-            int index = 0;
-            while((entry=readdir(dp)) != NULL) {
-                if(!strncmp(entry->d_name, ".", 1))
-                    continue;
-
-                pid_t tid = atoi(entry->d_name);
-                prstatus[index].pr_pid = tid;
-
-                uintptr_t regset = 1;
-                struct iovec ioVec;
-
-                ioVec.iov_base = &prstatus[index].pr_reg;
-                ioVec.iov_len = sizeof(core_arm_pt_regs);
-
-                if (ptrace(PTRACE_GETREGSET, tid, regset, &ioVec) < 0) {
-                    JNI_LOGI("%s %d: %s\n", __func__ , tid, strerror(errno));
-                    index++;
-                    continue;
-                }
-
-                index++;
             }
         }
-        closedir(dp);
     }
 }
 
@@ -284,13 +263,13 @@ void OpencoreImpl::WriteCoreProgramHeaders(FILE* fp)
 void OpencoreImpl::WriteCorePrStatus(FILE* fp)
 {
     Elf32_Nhdr elf_nhdr;
-    elf_nhdr.n_namesz = NT_GNU_PROPERTY_TYPE_0;
+    elf_nhdr.n_namesz = NOTE_CORE_NAME_SZ;
     elf_nhdr.n_descsz = sizeof(Elf32_prstatus);
     elf_nhdr.n_type = NT_PRSTATUS;
 
     char magic[8];
     memset(magic, 0, sizeof(magic));
-    snprintf(magic, 5, ELFCOREMAGIC);
+    snprintf(magic, NOTE_CORE_NAME_SZ, ELFCOREMAGIC);
 
     int index = 0;
     while (index < prnum) {
@@ -304,13 +283,13 @@ void OpencoreImpl::WriteCorePrStatus(FILE* fp)
 void OpencoreImpl::WriteCoreAUXV(FILE* fp)
 {
     Elf32_Nhdr elf_nhdr;
-    elf_nhdr.n_namesz = NT_GNU_PROPERTY_TYPE_0;
+    elf_nhdr.n_namesz = NOTE_CORE_NAME_SZ;
     elf_nhdr.n_descsz = sizeof(Elf32_auxv) * auxvnum;
     elf_nhdr.n_type = NT_AUXV;
 
     char magic[8];
     memset(magic, 0, sizeof(magic));
-    snprintf(magic, 5, ELFCOREMAGIC);
+    snprintf(magic, NOTE_CORE_NAME_SZ, ELFCOREMAGIC);
 
     fwrite(&elf_nhdr, sizeof(Elf32_Nhdr), 1, fp);
     fwrite(magic, sizeof(magic), 1, fp);
@@ -325,13 +304,13 @@ void OpencoreImpl::WriteCoreAUXV(FILE* fp)
 void OpencoreImpl::WriteNtFile(FILE* fp)
 {
     Elf32_Nhdr elf_nhdr;
-    elf_nhdr.n_namesz = NT_GNU_PROPERTY_TYPE_0;
+    elf_nhdr.n_namesz = NOTE_CORE_NAME_SZ;
     elf_nhdr.n_descsz = sizeof(Elf32_ntfile) * phnum + 2 * 4 + fileslen;
     elf_nhdr.n_type = NT_FILE;
 
     char magic[8];
     memset(magic, 0, sizeof(magic));
-    snprintf(magic, 5, ELFCOREMAGIC);
+    snprintf(magic, NOTE_CORE_NAME_SZ, ELFCOREMAGIC);
 
     fwrite(&elf_nhdr, sizeof(Elf32_Nhdr), 1, fp);
     fwrite(magic, sizeof(magic), 1, fp);
@@ -476,6 +455,7 @@ void OpencoreImpl::StopAllThread(pid_t pid)
                 JNI_LOGI("%s %d: %s\n", __func__ , tid, strerror(errno));
                 continue;
             }
+            pids.push_back(tid);
             int status = 0;
             waitpid(tid, &status, WUNTRACED);
         }
@@ -485,22 +465,12 @@ void OpencoreImpl::StopAllThread(pid_t pid)
 
 void OpencoreImpl::ContinueAllThread(pid_t pid)
 {
-    char task_dir[32];
-    struct dirent *entry;
-    snprintf(task_dir, sizeof(task_dir), "/proc/%d/task", pid);
-    DIR *dp = opendir(task_dir);
-    if (dp) {
-        while ((entry=readdir(dp)) != NULL) {
-            if (!strncmp(entry->d_name, ".", 1)) {
-                continue;
-            }
-            pid_t tid = atoi(entry->d_name);
-            if (ptrace(PTRACE_DETACH, tid, NULL, 0) < 0) {
-                JNI_LOGI("%s %d: %s\n", __func__ , tid, strerror(errno));
-                continue;
-            }
+    for (int index = 0; index < pids.size(); index++) {
+        pid_t tid = pids[index];
+        if (ptrace(PTRACE_DETACH, tid, NULL, 0) < 0) {
+            JNI_LOGI("%s %d: %s\n", __func__ , tid, strerror(errno));
+            continue;
         }
-        closedir(dp);
     }
 }
 
@@ -513,6 +483,7 @@ void OpencoreImpl::Prepare(const char* filename)
     prnum = 0;
     auxvnum = 0;
     fileslen = 0;
+    pids.clear();
     buffer.clear();
     maps.clear();
     self_maps.clear();
@@ -550,12 +521,11 @@ bool OpencoreImpl::DoCoreDump(const char* filename)
         alarm(GetTimeout());
 
         disable();
+        Prepare(filename);
         StopAllThread(getppid());
 
         FILE* fp = fopen(filename, "wb");
         if (fp) {
-            Prepare(filename);
-
             ParseProcessMapsVma(getppid());
             CreateCoreHeader();
             CreateCoreNoteHeader();
@@ -621,8 +591,8 @@ bool OpencoreImpl::NeedFilterFile(const char* filename, int offset)
         if (phdr[index].p_type != PT_LOAD)
             continue;
 
-        int pos = align_down(phdr[index].p_offset, 0x1000);
-        int end = align_up(phdr[index].p_offset + phdr[index].p_memsz, 0x1000);
+        int pos = RoundDown(phdr[index].p_offset, 0x1000);
+        int end = RoundUp(phdr[index].p_offset + phdr[index].p_memsz, 0x1000);
         if (pos <= offset && offset < end) {
             if ((phdr[index].p_flags & PF_W))
                 ret = false;

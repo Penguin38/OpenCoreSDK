@@ -54,6 +54,7 @@ constexpr uint64_t RoundUp(uint64_t x, uint64_t n) {
 
 class OpencoreImpl : public Opencore {
 public:
+    static const int DEF_VA_BITS = 39;
     static OpencoreImpl* GetInstance();
     bool DoCoreDump(const char* filename);
     bool NeedFilterFile(const char* filename, int offset);
@@ -81,6 +82,7 @@ public:
     // Segments
     void WriteCorePrStatus(FILE* fp);
     void WriteCoreAUXV(FILE* fp);
+    void WriteCorePAC(pid_t tid, FILE* fp);
     void WriteNtFile(FILE* fp);
     void AlignNoteSegment(FILE* fp);
     void WriteCoreLoadSegment(pid_t pid, FILE* fp);
@@ -98,6 +100,7 @@ private:
     int auxvnum;
     Elf64_ntfile *ntfile;
     int fileslen;
+    std::vector<pid_t> pids;
     std::vector<uint8_t> buffer;
     std::map<uint64_t, std::string> maps;
     std::map<uint64_t, std::string> self_maps;
