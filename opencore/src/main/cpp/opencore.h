@@ -93,6 +93,7 @@ public:
     static const int FILTER_SPECIAL_VMA = 1 << 0;
     static const int FILTER_FILE_VMA = 1 << 1;
     static const int FILTER_SHARED_VMA = 1 << 2;
+    static const int FILTER_SANITIZER_SHADOW_VMA = 1 << 3;
 
     static Opencore* GetInstance();
     static bool IsFilterSegment(char* flags, int inode, std::string segment, int offset);

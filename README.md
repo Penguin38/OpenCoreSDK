@@ -51,7 +51,7 @@ dependencies {
     Coredump.getInstance().setCoreFilter(Coredump.FILTER_SPECIAL_VMA
                                       // | Coredump.FILTER_FILE_VMA
                                       // | Coredump.FILTER_SHARED_VMA
-                                       );
+                                       | Coredump.FILTER_SANITIZER_SHADOW_VMA);
 
     //  设置 Coredump 保存目录
     Coredump.getInstance().setCoreDir(...);

@@ -44,6 +44,7 @@ public class Coredump {
     public static final int FILTER_SPECIAL_VMA = 1 << 0;
     public static final int FILTER_FILE_VMA = 1 << 1;
     public static final int FILTER_SHARED_VMA = 1 << 2;
+    public static final int FILTER_SANITIZER_SHADOW_VMA = 1 << 3;
 
     static {
         try {

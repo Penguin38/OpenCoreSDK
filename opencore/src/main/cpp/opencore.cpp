@@ -312,5 +312,12 @@ bool Opencore::IsFilterSegment(char* flags, int inode, std::string segment, int 
             return true;
     }
 
+    if (filter & FILTER_SANITIZER_SHADOW_VMA) {
+        if (segment == "[anon:low shadow]"
+                || segment == "[anon:high shadow]"
+                || (segment.compare(0, 12, "[anon:hwasan") == 0))
+            return true;
+    }
+
     return false;
 }
