@@ -83,6 +83,7 @@ public:
     void WriteCorePrStatus(FILE* fp);
     void WriteCoreAUXV(FILE* fp);
     void WriteCorePAC(pid_t tid, FILE* fp);
+    void WriteCoreMTE(pid_t tid, FILE* fp);
     void WriteNtFile(FILE* fp);
     void AlignNoteSegment(FILE* fp);
     void WriteCoreLoadSegment(pid_t pid, FILE* fp);
