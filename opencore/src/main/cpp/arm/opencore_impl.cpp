@@ -350,10 +350,21 @@ void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
     int index = 0;
     uint8_t zero[4096];
     memset(&zero, 0x0, sizeof(zero));
+    bool is_compat = false;
+    struct stat statbuf;
 
     if (mode == MODE_COPY2) {
-        JNI_LOGE("Not support MODE_COPY2, mode switch MODE_COPY.\n");
-        mode = MODE_COPY;
+        snprintf(filename, sizeof(filename), "/proc/%d/mem", pid);
+        fd = open(filename, O_RDONLY);
+        if (fd < 0) {
+            JNI_LOGE("Failed to open %s, mode switch MODE_COPY.\n", filename);
+            mode = MODE_COPY;
+        } else {
+            if (stat("/system/lib64", &statbuf) == 0 && S_ISDIR(statbuf.st_mode)) {
+                JNI_LOGI("Compat mode exec arm application.");
+                is_compat = true;
+            }
+        }
     }
 
     if (mode != MODE_COPY2)
@@ -405,7 +416,11 @@ void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
                     int count = phdr[index].p_memsz / sizeof(zero);
                     for (int i = 0; i < count; i++) {
                         memset(&zero, 0x0, sizeof(zero));
-                        pread(fd, &zero, sizeof(zero), phdr[index].p_vaddr + (i * sizeof(zero)));
+                        if (is_compat) {
+                            pread64(fd, &zero, sizeof(zero), phdr[index].p_vaddr + (i * sizeof(zero)));
+                        } else {
+                            pread(fd, &zero, sizeof(zero), phdr[index].p_vaddr + (i * sizeof(zero)));
+                        }
                         uint32_t ret = fwrite(zero, sizeof(zero), 1, fp);
                         if (ret != 1) {
                             need_padd_zero = true;
