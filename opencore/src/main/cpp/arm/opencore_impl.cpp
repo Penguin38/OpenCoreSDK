@@ -246,7 +246,7 @@ void OpencoreImpl::CreateCoreAUXV(pid_t pid)
 
 void OpencoreImpl::WriteCoreHeader(FILE* fp)
 {
-    fwrite((void *)&ehdr, sizeof(Elf32_Ehdr), 1, fp);
+    WriteAndRecord((void *)&ehdr, sizeof(Elf32_Ehdr), 1, fp);
 }
 
 void OpencoreImpl::WriteCoreNoteHeader(FILE* fp)
@@ -254,7 +254,7 @@ void OpencoreImpl::WriteCoreNoteHeader(FILE* fp)
     note.p_filesz = (sizeof(Elf32_prstatus) + sizeof(Elf32_Nhdr) + 8) * prnum;
     note.p_filesz += sizeof(Elf32_auxv) * auxvnum + sizeof(Elf32_Nhdr) + 8;
     note.p_filesz += sizeof(Elf32_ntfile) * phnum + sizeof(Elf32_Nhdr) + 8 + 8 + fileslen;
-    fwrite((void *)&note, sizeof(Elf32_Phdr), 1, fp);
+    WriteAndRecord((void *)&note, sizeof(Elf32_Phdr), 1, fp);
 }
 
 void OpencoreImpl::WriteCoreProgramHeaders(FILE* fp)
@@ -266,12 +266,12 @@ void OpencoreImpl::WriteCoreProgramHeaders(FILE* fp)
     }
 
     phdr[0].p_offset = offset;
-    fwrite(&phdr[0], sizeof(Elf32_Phdr), 1, fp);
+    WriteAndRecord(&phdr[0], sizeof(Elf32_Phdr), 1, fp);
 
     int index = 1;
     while (index < ehdr.e_phnum - 1) {
         phdr[index].p_offset = phdr[index - 1].p_offset + phdr[index-1].p_filesz;
-        fwrite(&phdr[index], sizeof(Elf32_Phdr), 1, fp);
+        WriteAndRecord(&phdr[index], sizeof(Elf32_Phdr), 1, fp);
         index++;
     }
 }
@@ -289,9 +289,9 @@ void OpencoreImpl::WriteCorePrStatus(FILE* fp)
 
     int index = 0;
     while (index < prnum) {
-        fwrite(&elf_nhdr, sizeof(Elf32_Nhdr), 1, fp);
-        fwrite(magic, sizeof(magic), 1, fp);
-        fwrite(&prstatus[index], sizeof(Elf32_prstatus), 1, fp);
+        WriteAndRecord(&elf_nhdr, sizeof(Elf32_Nhdr), 1, fp);
+        WriteAndRecord(magic, sizeof(magic), 1, fp);
+        WriteAndRecord(&prstatus[index], sizeof(Elf32_prstatus), 1, fp);
         index++;
     }
 }
@@ -307,12 +307,12 @@ void OpencoreImpl::WriteCoreAUXV(FILE* fp)
     memset(magic, 0, sizeof(magic));
     snprintf(magic, NOTE_CORE_NAME_SZ, ELFCOREMAGIC);
 
-    fwrite(&elf_nhdr, sizeof(Elf32_Nhdr), 1, fp);
-    fwrite(magic, sizeof(magic), 1, fp);
+    WriteAndRecord(&elf_nhdr, sizeof(Elf32_Nhdr), 1, fp);
+    WriteAndRecord(magic, sizeof(magic), 1, fp);
 
     int index = 0;
     while (index < auxvnum) {
-        fwrite(&auxv[index], sizeof(Elf32_auxv), 1, fp);
+        WriteAndRecord(&auxv[index], sizeof(Elf32_auxv), 1, fp);
         index++;
     }
 }
@@ -328,21 +328,21 @@ void OpencoreImpl::WriteNtFile(FILE* fp)
     memset(magic, 0, sizeof(magic));
     snprintf(magic, NOTE_CORE_NAME_SZ, ELFCOREMAGIC);
 
-    fwrite(&elf_nhdr, sizeof(Elf32_Nhdr), 1, fp);
-    fwrite(magic, sizeof(magic), 1, fp);
+    WriteAndRecord(&elf_nhdr, sizeof(Elf32_Nhdr), 1, fp);
+    WriteAndRecord(magic, sizeof(magic), 1, fp);
 
     uint32_t number = phnum;
-    fwrite(&number, 4, 1, fp);
+    WriteAndRecord(&number, 4, 1, fp);
     uint32_t page_size = sysconf(_SC_PAGE_SIZE);
-    fwrite(&page_size, 4, 1, fp);
+    WriteAndRecord(&page_size, 4, 1, fp);
 
     int index = 0;
     while(index < phnum){
-        fwrite(&ntfile[index], sizeof(Elf32_ntfile), 1, fp);
+        WriteAndRecord(&ntfile[index], sizeof(Elf32_ntfile), 1, fp);
         index++;
     }
 
-    fwrite(buffer.data(), buffer.size(), 1, fp);
+    WriteAndRecord(buffer.data(), buffer.size(), 1, fp);
 }
 
 void OpencoreImpl::AlignNoteSegment(FILE* fp)
@@ -352,7 +352,7 @@ void OpencoreImpl::AlignNoteSegment(FILE* fp)
     char *ptr = (char *)malloc(size);
     if (ptr) {
         memset(ptr, 0, size);
-        fwrite(ptr, size, 1, fp);
+        WriteAndRecord(ptr, size, 1, fp);
         free(ptr);
     }
 }
@@ -395,13 +395,13 @@ void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
                     Elf32_Addr target = phdr[index].p_vaddr;
                     while (target < phdr[index].p_vaddr + phdr[index].p_memsz) {
                         int mem = ptrace(PTRACE_PEEKTEXT, pid, target, 0x0);
-                        fwrite(&mem, sizeof(mem), 1, fp);
+                        WriteAndRecord(&mem, sizeof(mem), 1, fp);
                         target = target + sizeof(Elf32_Addr);
                     }
                 } break;
                 case MODE_COPY: {
                     if (InSelfMaps(phdr[index].p_vaddr)) {
-                        uint32_t ret = fwrite((void *)phdr[index].p_vaddr, phdr[index].p_memsz, 1, fp);
+                        uint32_t ret = WriteAndRecord((void *)phdr[index].p_vaddr, phdr[index].p_memsz, 1, fp);
                         if (ret != 1) {
                             need_padd_zero = true;
                             JNI_LOGE("[0x%x] write load segment fail. %s %s",
@@ -416,11 +416,11 @@ void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
                         Elf32_Addr target = phdr[index].p_vaddr;
                         while (target < phdr[index].p_vaddr + phdr[index].p_memsz) {
                             int mem = ptrace(PTRACE_PEEKTEXT, pid, target, 0x0);
-                            fwrite(&mem, sizeof(mem), 1, fp);
+                            WriteAndRecord(&mem, sizeof(mem), 1, fp);
                             target = target + sizeof(Elf32_Addr);
                         }
                     } else {
-                        uint32_t ret = fwrite((void *)phdr[index].p_vaddr, phdr[index].p_memsz, 1, fp);
+                        uint32_t ret = WriteAndRecord((void *)phdr[index].p_vaddr, phdr[index].p_memsz, 1, fp);
                         if (ret != 1) {
                             need_padd_zero = true;
                             JNI_LOGE("[0x%x] write load segment fail. %s %s",
@@ -437,7 +437,7 @@ void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
                         } else {
                             pread(fd, &zero, sizeof(zero), phdr[index].p_vaddr + (i * sizeof(zero)));
                         }
-                        uint32_t ret = fwrite(zero, sizeof(zero), 1, fp);
+                        uint32_t ret = WriteAndRecord(zero, sizeof(zero), 1, fp);
                         if (ret != 1) {
                             need_padd_zero = true;
                             JNI_LOGE("[0x%x] write load segment fail. %s %s",
@@ -455,7 +455,7 @@ void OpencoreImpl::WriteCoreLoadSegment(pid_t pid, FILE* fp)
                 fseek(fp, current_pos, SEEK_SET);
                 int count = phdr[index].p_memsz / sizeof(zero);
                 for (int i = 0; i < count; i++) {
-                    uint32_t ret = fwrite(zero, sizeof(zero), 1, fp);
+                    uint32_t ret = WriteAndRecord(zero, sizeof(zero), 1, fp);
                     if (ret != 1) {
                         JNI_LOGE("[0x%x] padding load segment fail. %s %s",
                                 phdr[index].p_vaddr, strerror(errno), maps[ntfile[index].start].c_str());
@@ -518,6 +518,7 @@ void OpencoreImpl::Prepare(const char* filename)
     buffer.clear();
     maps.clear();
     self_maps.clear();
+    SetCoreFilePath(filename);
 }
 
 void OpencoreImpl::Finish()
@@ -541,6 +542,7 @@ void OpencoreImpl::Finish()
         free(ntfile);
         ntfile = nullptr;
     }
+    RemoveCoreFileSuffix();
     JNI_LOGI("Coredump Done.");
 }
 
@@ -631,5 +633,23 @@ bool OpencoreImpl::NeedFilterFile(const char* filename, int offset)
     }
 
     munmap(mem, sb.st_size);
+    return ret;
+}
+
+int OpencoreImpl::WriteAndRecord(const void *buf, size_t size, size_t count, FILE *stream) {
+    if (GetFileLimit() >= 0 && file_size + size * count > GetFileLimit()) {
+        auto remaining = GetFileLimit() - file_size;
+        JNI_LOGE("Core file size exceeds limit: write %zu bytes and %ld bytes until limit, "
+                 "core limit %d, truncated", size * count, remaining,  GetFileLimit());
+        size = remaining > 0 ? remaining / count : 0;
+
+        fwrite(buf, size, count, stream);
+        Finish();
+
+        AddCoreFileSuffix("truncated");
+        _exit(0);
+    }
+    int ret = fwrite(buf, size, count, stream);
+    file_size += size * count;
     return ret;
 }

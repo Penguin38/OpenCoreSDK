@@ -95,6 +95,7 @@ JNIEXPORT jboolean JNICALL
 Java_penguin_opencore_sdk_Coredump_native_1doCoredump(JNIEnv *env, jobject /*thiz*/, jint tid, jstring filename)
 {
     jboolean isCopy;
+
     if (filename != NULL) {
         const char *cstr = env->GetStringUTFChars(filename, &isCopy);
         Opencore::dump(true, tid, cstr);
@@ -127,6 +128,12 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_penguin_opencore_sdk_Coredump_native_1setCoreFlag(JNIEnv *env, jobject /*thiz*/, jint flag) {
     Opencore::setFlag(flag);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_penguin_opencore_sdk_Coredump_native_1setCoreLimit(JNIEnv *env, jobject /*thiz*/, jlong limit) {
+    Opencore::setLimit(limit);
 }
 
 extern "C"

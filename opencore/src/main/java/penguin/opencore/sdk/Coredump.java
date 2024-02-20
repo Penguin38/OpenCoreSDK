@@ -45,6 +45,7 @@ public class Coredump {
     public static final int MODE_MAX = MODE_COPY2;
 
     private int mFlag = FLAG_CORE | FLAG_TID;
+    private long mLimit = DEF_LIMIT;
     public static final int FLAG_CORE = 1 << 0;
     public static final int FLAG_PROCESS_COMM = 1 << 1;
     public static final int FLAG_PID = 1 << 2;
@@ -54,6 +55,8 @@ public class Coredump {
 
     private int mTimeout = DEF_TIMEOUT;
     public static final int DEF_TIMEOUT = 30;
+    // default unlimited, set to 10GB
+    public static final long DEF_LIMIT = 10L << 30;
 
     private int mFilter = FILTER_NONE;
     public static final int FILTER_NONE = 0x0;
@@ -171,6 +174,11 @@ public class Coredump {
         native_setCoreFlag(mFlag);
     }
 
+    public void setCoreLimit(long limit) {
+        mLimit = limit;
+        native_setCoreLimit(mLimit);
+    }
+
     public void setCoreTimeout(int sec) {
         mTimeout = sec;
         native_setCoreTimeout(sec);
@@ -189,6 +197,7 @@ public class Coredump {
     private native void native_setCoreDir(String dir);
     private native void native_setCoreMode(int mode);
     private native void native_setCoreFlag(int flag);
+    private native void native_setCoreLimit(long limit);
     private native void native_setCoreTimeout(int sec);
     private native void native_setCoreFilter(int filter);
 
