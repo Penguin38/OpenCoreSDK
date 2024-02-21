@@ -89,7 +89,7 @@ public:
     void CreateCoreNoteHeader();
     void CreateCorePrStatus(pid_t pid);
     void CreateCoreAUXV(pid_t pid);
-
+    int WriteAndRecord(const void *buf, size_t size, size_t count, FILE *stream);
     // ELF Header
     void WriteCoreHeader(FILE* fp);
 

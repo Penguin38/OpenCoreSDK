@@ -97,6 +97,8 @@ public:
 
     static const int DEF_TIMEOUT = 30;
 
+    static const long DEF_LIMIT = -1L; //  unlimited
+
     static const int INVALID_TID = 0;
 
     static const int FILTER_NONE = 0x0;
@@ -116,6 +118,7 @@ public:
     static void setCallback(DumpCallback cb);
     static void setMode(int mode);
     static void setFlag(int flag);
+    static void setLimit(long limit);
     static void setTimeout(int sec);
     static void setFilter(int filter);
     static const char* getVersion() { return OPENCORE_VERSION; }
@@ -126,22 +129,30 @@ public:
         flag = FLAG_CORE | FLAG_TID;
         state = STATE_OFF;
         timeout = DEF_TIMEOUT;
+        file_limit = DEF_LIMIT;
         tid = INVALID_TID;
         filter = FILTER_NONE;
     }
+    long file_size = 0;
     virtual bool DoCoreDump(const char* filename) = 0;
     virtual bool NeedFilterFile(const char* filename, int offset) = 0;
     std::string GetCoreDir() { return dir; }
+    std::string GetCoreFilePath() { return core_path; }
+    void SetCoreFilePath(std::string path) { core_path = path; }
     DumpCallback GetCallback() { return cb; }
     int GetMode() { return mode; }
     int GetFlag() { return flag; }
     int GetTimeout() { return timeout; }
+    int GetFileLimit() { return file_limit; }
     int GetFilter() { return filter; }
+    void AddCoreFileSuffix(const char *suffix);
+    void RemoveCoreFileSuffix();
 private:
     void SetCoreDir(std::string d) { dir = d; }
     void SetCallback(DumpCallback c) { cb = c; }
     void SetMode(int m) { mode = m; }
     void SetFlag(int f) { flag = f; }
+    void SetLimit(long l) { file_limit = l; }
     void SetTimeout(int t) { timeout = t; }
     void SetFilter(int f) { filter = f; }
     void SetState(int s) { state = s; }
@@ -150,10 +161,12 @@ private:
 
     DumpCallback cb;
     std::string dir;
+    std::string core_path;
     int mode;
     int flag;
     int state;
     int timeout;
+    long file_limit;
     int tid;
     int filter;
 };

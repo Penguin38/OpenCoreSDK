@@ -33,6 +33,9 @@ dependencies {
     //  设置超时时间 (单位秒)
     Coredump.getInstance().setCoreTimeout(Coredump.DEF_TIMEOUT);
 
+    // 设置Coredump文件大小
+    Coredump.getInstance().setCoreLimit(Coredump.DEF_LIMIT);
+
     //  设置模式
     // Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE | Coredump.MODE_COPY);
     // Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE);

@@ -168,7 +168,7 @@ void Opencore::dump(bool java, int tid, const char* filename)
 
         if (!prctl(PR_SET_PTRACER, PR_SET_PTRACER_ANY))
             need_restore_ptrace = true;
-
+        output.append(".temp");
         impl->DoCoreDump(output.c_str());
 
         if (need_restore_dumpable) prctl(PR_SET_DUMPABLE, ori_dumpable);
@@ -181,6 +181,7 @@ void Opencore::dump(bool java, int tid, const char* filename)
     if (callback) {
         callback(java, output.c_str());
     }
+
 }
 
 void Opencore::HandleSignal(int sig)
@@ -277,6 +278,14 @@ void Opencore::setFlag(int flag)
     }
 }
 
+void Opencore::setLimit(long limit)
+{
+    Opencore* impl = GetInstance();
+    if (impl) {
+        impl->SetLimit(limit);
+    }
+}
+
 void Opencore::setTimeout(int sec)
 {
     Opencore* impl = GetInstance();
@@ -295,7 +304,14 @@ void Opencore::setFilter(int filter)
 
 void Opencore::TimeoutHandle(int)
 {
-    JNI_LOGI("Coredump timeout.");
+    Opencore* impl = GetInstance();
+    if (impl) {
+        if (remove(impl->GetCoreFilePath().c_str()) == 0) {
+            JNI_LOGI("Coredump timeout, delete temp file");
+        } else {
+            JNI_LOGI("Coredump timeout, delete temp file failed: %s", strerror(errno));
+        }
+    }
     _exit(0);
 }
 
@@ -336,4 +352,28 @@ bool Opencore::IsFilterSegment(char* flags, int inode, std::string segment, int 
     }
 
     return false;
+}
+
+void Opencore::AddCoreFileSuffix(const char *suffix) {
+    auto newFilePath = GetCoreFilePath() + '.' + suffix;
+
+    if(rename(GetCoreFilePath().c_str(), newFilePath.c_str()) != 0) {
+        JNI_LOGE("Coredump rename %s to %s failed: %s", GetCoreFilePath().c_str(), newFilePath.c_str(), strerror(errno));
+    }
+    SetCoreFilePath(newFilePath);
+    return;
+}
+
+void Opencore::RemoveCoreFileSuffix() {
+    auto pos = GetCoreFilePath().rfind('.');
+    if(pos == std::string::npos) {
+        JNI_LOGE("Error: No suffix found in core name");
+        return;
+    }
+    std::string newFilePath = GetCoreFilePath().substr(0, pos);
+
+    if(rename(GetCoreFilePath().c_str(), newFilePath.c_str()) != 0) {
+        JNI_LOGE("Coredump rename %s to %s failed: %s", GetCoreFilePath().c_str(), newFilePath.c_str(), strerror(errno));
+    }
+    SetCoreFilePath(newFilePath);
 }
