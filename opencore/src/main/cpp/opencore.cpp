@@ -306,7 +306,7 @@ void Opencore::TimeoutHandle(int)
 {
     Opencore* impl = GetInstance();
     if (impl) {
-        if (remove(impl->GetCoreFilePath()) == 0) {
+        if (remove(impl->GetCoreFilePath().c_str()) == 0) {
             JNI_LOGI("Coredump timeout, delete temp file");
         } else {
             JNI_LOGI("Coredump timeout, delete temp file failed: %s", strerror(errno));
@@ -355,33 +355,25 @@ bool Opencore::IsFilterSegment(char* flags, int inode, std::string segment, int 
 }
 
 void Opencore::AddCoreFileSuffix(const char *suffix) {
-    char newFilePath[256];
+    auto newFilePath = GetCoreFilePath() + '.' + suffix;
 
-    strncpy(newFilePath, GetCoreFilePath(), strlen(GetCoreFilePath()));
-
-    strcat(newFilePath, ".");
-    strcat(newFilePath, suffix);
-
-    if(rename(GetCoreFilePath(), newFilePath) != 0) {
-        JNI_LOGE("Coredump rename %s to %s failed: %s", GetCoreFilePath(), newFilePath, strerror(errno));
+    if(rename(GetCoreFilePath().c_str(), newFilePath.c_str()) != 0) {
+        JNI_LOGE("Coredump rename %s to %s failed: %s", GetCoreFilePath().c_str(), newFilePath.c_str(), strerror(errno));
     }
     SetCoreFilePath(newFilePath);
     return;
 }
 
 void Opencore::RemoveCoreFileSuffix() {
-    char newFilePath[256];
-
-    const char* lastSlash = strrchr(GetCoreFilePath(), '.');
-    if(lastSlash == nullptr) {
+    auto pos = GetCoreFilePath().rfind('.');
+    if(pos == std::string::npos) {
         JNI_LOGE("Error: No suffix found in core name");
         return;
     }
-    strncpy(newFilePath, GetCoreFilePath(), lastSlash - GetCoreFilePath());
-    newFilePath[lastSlash - GetCoreFilePath()] = '\0';
+    std::string newFilePath = GetCoreFilePath().substr(0, pos);
 
-    if(rename(GetCoreFilePath(), newFilePath) != 0) {
-        JNI_LOGE("Coredump rename %s to %s failed: %s", GetCoreFilePath(), newFilePath, strerror(errno));
+    if(rename(GetCoreFilePath().c_str(), newFilePath.c_str()) != 0) {
+        JNI_LOGE("Coredump rename %s to %s failed: %s", GetCoreFilePath().c_str(), newFilePath.c_str(), strerror(errno));
     }
     SetCoreFilePath(newFilePath);
 }

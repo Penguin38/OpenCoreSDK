@@ -137,8 +137,8 @@ public:
     virtual bool DoCoreDump(const char* filename) = 0;
     virtual bool NeedFilterFile(const char* filename, int offset) = 0;
     std::string GetCoreDir() { return dir; }
-    char* GetCoreFilePath() { return core_path; }
-    void SetCoreFilePath(const char* path) { strcpy(core_path, path); }
+    std::string GetCoreFilePath() { return core_path; }
+    void SetCoreFilePath(std::string path) { core_path = path; }
     DumpCallback GetCallback() { return cb; }
     int GetMode() { return mode; }
     int GetFlag() { return flag; }
@@ -161,7 +161,7 @@ private:
 
     DumpCallback cb;
     std::string dir;
-    char core_path[256];
+    std::string core_path;
     int mode;
     int flag;
     int state;
