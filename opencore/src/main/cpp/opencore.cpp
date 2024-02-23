@@ -34,11 +34,17 @@
 #if defined(__arm__)
 #include "arm/opencore_impl.h"
 #endif
+#if defined(__x86_64__)
+#include "x86_64/opencore_impl.h"
+#endif
+#if defined(__i386__)
+#include "x86/opencore_impl.h"
+#endif
 #include "eajnis/Log.h"
 
 Opencore* Opencore::GetInstance()
 {
-#if defined(__aarch64__) || defined(__arm64__) || defined(__arm__)
+#if defined(__aarch64__) || defined(__arm64__) || defined(__arm__) || defined(__x86_64__) || defined(__i386__)
     return OpencoreImpl::GetInstance();
 #endif
     return nullptr;
@@ -173,13 +179,13 @@ void Opencore::dump(bool java, int tid, const char* filename)
 
         if (need_restore_dumpable) prctl(PR_SET_DUMPABLE, ori_dumpable);
         if (need_restore_ptrace) prctl(PR_SET_PTRACER, 0);
+
+        DumpCallback callback = impl->GetCallback();
+        if (callback) {
+            callback(java, output.c_str());
+        }
     } else {
         JNI_LOGI("Not support coredump!!");
-    }
-
-    DumpCallback callback = impl->GetCallback();
-    if (callback) {
-        callback(java, output.c_str());
     }
 }
 

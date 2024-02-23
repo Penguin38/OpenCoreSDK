@@ -15,7 +15,7 @@
  */
 
 #ifndef LOG_TAG
-#define LOG_TAG "Opencore-arm64"
+#define LOG_TAG "Opencore-x86_64"
 #endif
 
 #include "opencore_impl.h"
@@ -31,10 +31,6 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
-
-#define NT_ARM_TAGGED_ADDR_CTRL 0x409
-#define NT_ARM_PAC_ENABLED_KEYS 0x40A
-#define GENMASK(h, l) (((1ULL<<(h+1))-1)&(~((1ULL<<l)-1)))
 
 OpencoreImpl* impl = new OpencoreImpl;
 
@@ -176,7 +172,7 @@ void OpencoreImpl::CreateCoreHeader()
     ehdr.e_ident[EI_VERSION] = EV_CURRENT;
 
     ehdr.e_type = ET_CORE;
-    ehdr.e_machine = EM_AARCH64;
+    ehdr.e_machine = EM_X86_64;
     ehdr.e_version = EV_CURRENT;
     ehdr.e_entry = 0x0;
     ehdr.e_phoff = sizeof(Elf64_Ehdr);
@@ -211,7 +207,7 @@ void OpencoreImpl::CreateCorePrStatus(pid_t pid)
             struct iovec ioVec;
 
             ioVec.iov_base = &prstatus[index].pr_reg;
-            ioVec.iov_len = sizeof(core_arm64_pt_regs);
+            ioVec.iov_len = sizeof(core_x86_64_pt_regs);
 
             if (ptrace(PTRACE_GETREGSET, tid, regset, &ioVec) < 0) {
                 JNI_LOGI("%s %d: %s\n", __func__ , tid, strerror(errno));
@@ -257,10 +253,6 @@ void OpencoreImpl::WriteCoreNoteHeader(FILE* fp)
 {
     note.p_filesz = (sizeof(Elf64_prstatus) + sizeof(Elf64_Nhdr) + 8) * prnum;
     note.p_filesz += sizeof(Elf64_auxv) * auxvnum + sizeof(Elf64_Nhdr) + 8;
-    note.p_filesz += ((sizeof(user_pac_mask) + sizeof(Elf64_Nhdr) + 8)  // NT_ARM_PAC_MASK
-                     +(sizeof(uint64_t) + sizeof(Elf64_Nhdr) + 8)       // NT_ARM_PAC_ENABLED_KEYS
-                     ) * prnum;
-    note.p_filesz += (sizeof(uint64_t) + sizeof(Elf64_Nhdr) + 8) * prnum;  // NT_ARM_TAGGED_ADDR_CTRL
     note.p_filesz += sizeof(Elf64_ntfile) * phnum + sizeof(Elf64_Nhdr) + 8 + 2 * sizeof(unsigned long) + fileslen;
     fwrite((void *)&note, sizeof(Elf64_Phdr), 1, fp);
 }
@@ -300,8 +292,6 @@ void OpencoreImpl::WriteCorePrStatus(FILE* fp)
         fwrite(&elf_nhdr, sizeof(Elf64_Nhdr), 1, fp);
         fwrite(magic, sizeof(magic), 1, fp);
         fwrite(&prstatus[index], sizeof(Elf64_prstatus), 1, fp);
-        WriteCorePAC(prstatus[index].pr_pid ,fp);
-        WriteCoreMTE(prstatus[index].pr_pid ,fp);
         index++;
     }
 }
@@ -325,79 +315,6 @@ void OpencoreImpl::WriteCoreAUXV(FILE* fp)
         fwrite(&auxv[index], sizeof(Elf64_auxv), 1, fp);
         index++;
     }
-}
-
-void OpencoreImpl::WriteCorePAC(pid_t tid, FILE* fp)
-{
-    // NT_ARM_PAC_MASK
-    Elf64_Nhdr elf_nhdr;
-    elf_nhdr.n_namesz = NOTE_LINUX_NAME_SZ;
-    elf_nhdr.n_descsz = sizeof(user_pac_mask);
-    elf_nhdr.n_type = NT_ARM_PAC_MASK;
-
-    char magic[8];
-    memset(magic, 0, sizeof(magic));
-    snprintf(magic, NOTE_LINUX_NAME_SZ, ELFLINUXMAGIC);
-
-    fwrite(&elf_nhdr, sizeof(Elf64_Nhdr), 1, fp);
-    fwrite(magic, sizeof(magic), 1, fp);
-
-    user_pac_mask uregs;
-    struct iovec pac_mask_iov = {
-        &uregs,
-        sizeof(user_pac_mask),
-    };
-    if (ptrace(PTRACE_GETREGSET, tid, NT_ARM_PAC_MASK,
-                reinterpret_cast<void*>(&pac_mask_iov)) == -1) {
-        uint64_t mask = GENMASK(54, DEF_VA_BITS);
-        uregs.data_mask = mask;
-        uregs.insn_mask = mask;
-    }
-    fwrite(&uregs, sizeof(user_pac_mask), 1, fp);
-
-    // NT_ARM_PAC_ENABLED_KEYS
-    elf_nhdr.n_descsz = sizeof(uint64_t);
-    elf_nhdr.n_type = NT_ARM_PAC_ENABLED_KEYS;
-
-    fwrite(&elf_nhdr, sizeof(Elf64_Nhdr), 1, fp);
-    fwrite(magic, sizeof(magic), 1, fp);
-
-    uint64_t pac_enabled_keys;
-    struct iovec pac_enabled_keys_iov = {
-        &pac_enabled_keys,
-        sizeof(pac_enabled_keys),
-    };
-    if (ptrace(PTRACE_GETREGSET, tid, NT_ARM_PAC_ENABLED_KEYS,
-                reinterpret_cast<void*>(&pac_enabled_keys_iov)) == -1) {
-        pac_enabled_keys = 0;
-    }
-    fwrite(&pac_enabled_keys, sizeof(uint64_t), 1, fp);
-}
-
-void OpencoreImpl::WriteCoreMTE(pid_t tid, FILE* fp)
-{
-    // NT_ARM_TAGGED_ADDR_CTRL
-    Elf64_Nhdr elf_nhdr;
-    elf_nhdr.n_namesz = NOTE_LINUX_NAME_SZ;
-    elf_nhdr.n_descsz = sizeof(uint64_t);
-    elf_nhdr.n_type = NT_ARM_TAGGED_ADDR_CTRL;
-
-    char magic[8];
-    memset(magic, 0, sizeof(magic));
-    snprintf(magic, NOTE_LINUX_NAME_SZ, ELFLINUXMAGIC);
-
-    fwrite(&elf_nhdr, sizeof(Elf64_Nhdr), 1, fp);
-    fwrite(magic, sizeof(magic), 1, fp);
-
-    uint64_t tagged_addr_ctrl;
-    struct iovec tagged_addr_ctrl_iov = {
-        &tagged_addr_ctrl,
-        sizeof(tagged_addr_ctrl),
-    };
-    if (ptrace(PTRACE_GETREGSET, tid, NT_ARM_TAGGED_ADDR_CTRL,
-                reinterpret_cast<void*>(&tagged_addr_ctrl_iov)) == -1) {
-    }
-    fwrite(&tagged_addr_ctrl, sizeof(uint64_t), 1, fp);
 }
 
 void OpencoreImpl::WriteNtFile(FILE* fp)
