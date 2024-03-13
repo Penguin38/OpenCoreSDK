@@ -600,7 +600,7 @@ bool OpencoreImpl::NeedFilterFile(const char* filename, int offset)
         return true;
 
     Elf64_Ehdr* ehdr = (Elf64_Ehdr*)mem;
-    if (strncmp(mem, ELFMAG, 4) || ehdr->e_machine != EM_AARCH64) {
+    if (strncmp(mem, ELFMAG, 4) || ehdr->e_machine != EM_X86_64) {
         munmap(mem, sb.st_size);
         return true;
     }
