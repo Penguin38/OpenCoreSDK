@@ -341,5 +341,10 @@ bool Opencore::IsFilterSegment(char* flags, int inode, std::string segment, int 
             return true;
     }
 
+    if (filter & FILTER_NON_READ_VMA) {
+        if (flags[0] == '-')
+            return true;
+    }
+
     return false;
 }

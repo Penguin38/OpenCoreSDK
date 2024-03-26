@@ -56,9 +56,7 @@ void OpencoreImpl::ParserPhdr(int index, void *start, void *end, char* flags, ch
     if (flags[2] == 'x' || flags[2] == 'X')
         phdr[index].p_flags = phdr[index].p_flags | PF_X;
 
-    if ((phdr[index].p_flags) & PF_R)
-        phdr[index].p_filesz = phdr[index].p_memsz;
-
+    phdr[index].p_filesz = phdr[index].p_memsz;
     phdr[index].p_align = sysconf(_SC_PAGE_SIZE);
 }
 

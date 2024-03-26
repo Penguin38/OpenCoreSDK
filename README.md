@@ -21,7 +21,7 @@ dependencyResolutionManagement {
 ```
 dependencies {
     ...
-    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.4.4'
+    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.4.5'
 }
 ```
 ## 例子
@@ -51,7 +51,8 @@ dependencies {
     Coredump.getInstance().setCoreFilter(Coredump.FILTER_SPECIAL_VMA
                                       // | Coredump.FILTER_FILE_VMA
                                       // | Coredump.FILTER_SHARED_VMA
-                                       | Coredump.FILTER_SANITIZER_SHADOW_VMA);
+                                       | Coredump.FILTER_SANITIZER_SHADOW_VMA
+                                       | Coredump.FILTER_NON_READ_VMA);
 
     //  设置 Coredump 保存目录
     Coredump.getInstance().setCoreDir(...);
