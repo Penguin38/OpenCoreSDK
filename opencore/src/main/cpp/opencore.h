@@ -73,7 +73,7 @@
                                    |          |
                                     ----------
 */
-#define OPENCORE_VERSION "OpenCoreSDK-1.4.4"
+#define OPENCORE_VERSION "OpenCoreSDK-1.4.5"
 typedef void (*DumpCallback)(bool java, const char* path);
 
 class Opencore {
