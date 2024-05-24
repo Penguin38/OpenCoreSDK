@@ -9,8 +9,8 @@ android {
 
     defaultConfig {
         //applicationId "penguin.opencore.sdk"
-        minSdkVersion 30
-        targetSdkVersion 30
+        //minSdkVersion 29
+        //targetSdkVersion 30
         versionCode 1
         versionName "1.0"
 
