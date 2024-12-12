@@ -1,4 +1,13 @@
-# OpenCoreSDK
+# 技术体系
+![core-analysis](https://raw.githubusercontent.com/Penguin38/OpenCoreAnalysisKit/refs/heads/main/doc/OpenCoreAnalyzer.jpg)
+
+| Project      | Path                                              |
+|:------------:|---------------------------------------------------|
+|core-parser   | https://github.com/Penguin38/OpenCoreAnalysisKit  |
+|linux-parser  | https://github.com/Penguin38/OpenLinuxAnalysisKit |
+|crash-android | https://github.com/Penguin38/crash-android        |
+|OpenCoreSDK   | https://github.com/Penguin38/OpenCoreSDK          |
+
 ## 构建项目依赖
 ```
 allprojects {
