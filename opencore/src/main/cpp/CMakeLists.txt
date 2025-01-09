@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.10.2)
+project("opencore")
 
-project("sdk")
-
+include_directories(.)
 include_directories(EAJNI/include/)
 aux_source_directory(EAJNI SRC_LIST)
 add_library(eajni STATIC ${SRC_LIST})
@@ -24,19 +24,33 @@ find_library(log-lib log)
 target_link_libraries(eajni ${log-lib})
 
 if (ANDROID_ABI STREQUAL "arm64-v8a")
-    set(OPENCORE_IMPL arm64/opencore_impl.cpp)
+    set(OPENCORE_IMPL
+        opencore/lp64/opencore.cpp
+        opencore/arm64/opencore.cpp)
 elseif(ANDROID_ABI STREQUAL "armeabi-v7a")
-    set(OPENCORE_IMPL arm/opencore_impl.cpp)
+    set(OPENCORE_IMPL
+        opencore/lp32/opencore.cpp
+        opencore/arm/opencore.cpp)
 elseif(ANDROID_ABI STREQUAL "armeabi")
-    set(OPENCORE_IMPL arm/opencore_impl.cpp)
+    set(OPENCORE_IMPL
+        opencore/lp32/opencore.cpp
+        opencore/arm/opencore.cpp)
 elseif(ANDROID_ABI STREQUAL "x86_64")
-    set(OPENCORE_IMPL x86_64/opencore_impl.cpp)
+    set(OPENCORE_IMPL
+        opencore/lp64/opencore.cpp
+        opencore/x86_64/opencore.cpp)
 elseif(ANDROID_ABI STREQUAL "x86")
-    set(OPENCORE_IMPL x86/opencore_impl.cpp)
+    set(OPENCORE_IMPL
+        opencore/lp32/opencore.cpp
+        opencore/x86/opencore.cpp)
+elseif(ANDROID_ABI STREQUAL "riscv64")
+    set(OPENCORE_IMPL
+        opencore/lp64/opencore.cpp
+        opencore/riscv64/opencore.cpp)
 endif()
 
-add_library(opencore SHARED opencore.cpp ${OPENCORE_IMPL} opencore_jni.cpp)
+add_library(opencore SHARED
+            opencore/opencore.cpp
+            ${OPENCORE_IMPL}
+            opencore_jni.cpp)
 target_link_libraries(opencore ${log-lib} eajni)
-
-#add_library(opencore-jni SHARED opencore_jni.cpp)
-#target_link_libraries(opencore-jni opencore ${log-lib} eajni)

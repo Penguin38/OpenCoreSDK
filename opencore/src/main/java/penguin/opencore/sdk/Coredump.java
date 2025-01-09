@@ -28,23 +28,18 @@ public class Coredump {
     private static final String TAG = "Coredump";
     private static final Coredump sInstance = new Coredump();
 
+    private static volatile boolean sLoaded = false;
     private static volatile boolean sIsInit = false;
+    private static volatile boolean sReady = false;
+
     private OpencoreHandler mCoredumpWork;
     private final Object mLock = new Object();
-    private String mCoreDir;
     private Listener mListener;
     private JavaCrashHandler mJavaCrashHandler = new JavaCrashHandler();
 
     public static final int JAVA = 1;
     public static final int NATIVE = 2;
 
-    private int mCoreMode = MODE_COPY2;
-    public static final int MODE_PTRACE = 1 << 0;
-    public static final int MODE_COPY = 1 << 1;
-    public static final int MODE_COPY2 = 1 << 2;
-    public static final int MODE_MAX = MODE_COPY2;
-
-    private int mFlag = FLAG_CORE | FLAG_TID;
     public static final int FLAG_CORE = 1 << 0;
     public static final int FLAG_PROCESS_COMM = 1 << 1;
     public static final int FLAG_PID = 1 << 2;
@@ -52,10 +47,8 @@ public class Coredump {
     public static final int FLAG_TID = 1 << 4;
     public static final int FLAG_TIMESTAMP = 1 << 5;
 
-    private int mTimeout = DEF_TIMEOUT;
-    public static final int DEF_TIMEOUT = 30;
+    public static final int DEF_TIMEOUT = 120;
 
-    private int mFilter = FILTER_NONE;
     public static final int FILTER_NONE = 0x0;
     public static final int FILTER_SPECIAL_VMA = 1 << 0;
     public static final int FILTER_FILE_VMA = 1 << 1;
@@ -66,6 +59,7 @@ public class Coredump {
     static {
         try {
             System.loadLibrary("opencore");
+            sLoaded = true;
         } catch(UnsatisfiedLinkError e) {
             Log.e(TAG, "Can't load opencore-jni", e);
         }
@@ -77,41 +71,45 @@ public class Coredump {
         return sInstance;
     }
 
+    public static boolean isReady() {
+        return sReady;
+    }
+
     public synchronized boolean init() {
-        if (!sIsInit) {
-            HandlerThread core = new HandlerThread("opencore-bg");
-            core.start();
-            mCoredumpWork = new OpencoreHandler(core.getLooper());
-            native_init((Class<Coredump>) getClass());
-            sIsInit = true;
-        } else {
-            Log.i(TAG, "Already init opencore.");
+        if (sLoaded) {
+            if (!sIsInit) {
+                HandlerThread core = new HandlerThread("opencore-bg");
+                core.start();
+                mCoredumpWork = new OpencoreHandler(core.getLooper());
+                sReady = native_init(this);
+                sIsInit = true;
+            } else {
+                Log.i(TAG, "Already init opencore.");
+            }
         }
         return sIsInit;
     }
 
     public synchronized boolean enable(int type) {
-        switch (type) {
-            case JAVA:
-                if (sIsInit) {
+        if (isReady()) {
+            switch (type) {
+                case JAVA:
                     return mJavaCrashHandler.enableJavaCrash();
-                }
-                break;
-            case NATIVE:
-                return native_enable();
+                case NATIVE:
+                    return native_enable();
+            }
         }
         return false;
     }
 
     public synchronized boolean disable(int type) {
-        switch (type) {
-            case JAVA:
-                if (sIsInit) {
+        if (isReady()) {
+            switch (type) {
+                case JAVA:
                     return mJavaCrashHandler.disableJavaCrash();
-                }
-                break;
-            case NATIVE:
-                return native_diable();
+                case NATIVE:
+                    return native_disable();
+            }
         }
         return false;
     }
@@ -121,7 +119,7 @@ public class Coredump {
     }
 
     public synchronized boolean doCoredump(String filename) {
-        if (!sIsInit)
+        if (!isReady())
             return false;
 
         sendEvent(OpencoreHandler.CODE_COREDUMP, filename);
@@ -152,43 +150,35 @@ public class Coredump {
     }
 
     public void setCoreDir(String dir) {
-        if (dir != null) {
-            mCoreDir = dir;
+        if (isReady() && dir != null) {
             native_setCoreDir(dir);
         }
     }
 
-    public void setCoreMode(int mode) {
-        if (mode > MODE_MAX) {
-            mCoreMode = MODE_MAX;
-        } else {
-            mCoreMode = mode;
-        }
-        native_setCoreMode(mCoreMode);
-    }
-
     public void setCoreFlag(int flag) {
-        mFlag = flag;
-        native_setCoreFlag(mFlag);
+        if (isReady()) {
+            native_setCoreFlag(flag);
+        }
     }
 
     public void setCoreTimeout(int sec) {
-        mTimeout = sec;
-        native_setCoreTimeout(sec);
+        if (isReady()) {
+            native_setCoreTimeout(sec);
+        }
     }
 
     public void setCoreFilter(int filter) {
-        mFilter = filter;
-        native_setCoreFilter(filter);
+        if (isReady()) {
+            native_setCoreFilter(filter);
+        }
     }
 
+    private static native boolean native_init(Coredump coredump);
     public native String getVersion();
-    private native void native_init(Class<Coredump> clazz);
     private native boolean native_enable();
-    private native boolean native_diable();
+    private native boolean native_disable();
     private native boolean native_doCoredump(int tid, String filename);
     private native void native_setCoreDir(String dir);
-    private native void native_setCoreMode(int mode);
     private native void native_setCoreFlag(int flag);
     private native void native_setCoreTimeout(int sec);
     private native void native_setCoreFilter(int filter);
@@ -205,10 +195,12 @@ public class Coredump {
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case CODE_COREDUMP: {
-                    if (msg.obj instanceof String) {
-                        Coredump.getInstance().native_doCoredump(msg.arg1, (String)msg.obj);
-                    } else {
-                        Coredump.getInstance().native_doCoredump(msg.arg1, null);
+                    if (isReady()) {
+                        if (msg.obj instanceof String) {
+                            Coredump.getInstance().native_doCoredump(msg.arg1, (String)msg.obj);
+                        } else {
+                            Coredump.getInstance().native_doCoredump(msg.arg1, null);
+                        }
                     }
                     Coredump.getInstance().notifyCore();
                 } break;
@@ -237,7 +229,7 @@ public class Coredump {
     }
 
     public static interface Listener {
-        void onCompleted(String dir);
+        void onCompleted(String path);
     }
 
     public void setListener(Listener listener) {

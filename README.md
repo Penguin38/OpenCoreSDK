@@ -30,7 +30,7 @@ dependencyResolutionManagement {
 ```
 dependencies {
     ...
-    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.4.5'
+    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.4.6'
 }
 ```
 ## 例子
@@ -41,12 +41,6 @@ dependencies {
 
     //  设置超时时间 (单位秒)
     Coredump.getInstance().setCoreTimeout(Coredump.DEF_TIMEOUT);
-
-    //  设置模式
-    // Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE | Coredump.MODE_COPY);
-    // Coredump.getInstance().setCoreMode(Coredump.MODE_PTRACE);
-    // Coredump.getInstance().setCoreMode(Coredump.MODE_COPY);
-    Coredump.getInstance().setCoreMode(Coredump.MODE_COPY2);
 
     //  设置 Coredump 文件名规则
     Coredump.getInstance().setCoreFlag(Coredump.FLAG_CORE

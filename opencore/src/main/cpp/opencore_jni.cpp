@@ -21,7 +21,7 @@
 #define LOG_TAG "Opencore-SDK"
 #endif
 
-#include "opencore.h"
+#include "opencore/opencore.h"
 #include "eajnis/AndroidJNI.h"
 #include "eajnis/Log.h"
 
@@ -60,92 +60,122 @@ static void penguin_opencore_sdk_coredump_callback(bool java, const char* filepa
     }
 }
 
-extern "C"
-JNIEXPORT jstring JNICALL
-Java_penguin_opencore_sdk_Coredump_getVersion(JNIEnv *env, jobject /*thiz*/)
+static jstring penguin_opencore_sdk_Coredump_getVersion(JNIEnv *env, jobject /*thiz*/)
 {
-    return env->NewStringUTF(Opencore::getVersion());
+    return env->NewStringUTF(Opencore::GetVersion());
 }
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_penguin_opencore_sdk_Coredump_native_1init(JNIEnv *env, jobject /*thiz*/, jclass clazz)
+static jboolean penguin_opencore_sdk_Coredump_native_enable(JNIEnv *env, jobject /*thiz*/)
 {
-    gUser.gCoredump = (jclass)env->NewGlobalRef(clazz);
-    gUser.gCallbackEvent = env->GetStaticMethodID(gUser.gCoredump, "callbackEvent", "(Ljava/lang/String;)V");
-    Opencore::setCallback(penguin_opencore_sdk_coredump_callback);
+    return Opencore::Enable();
 }
 
-extern "C"
-JNIEXPORT jboolean JNICALL
-Java_penguin_opencore_sdk_Coredump_native_1enable(JNIEnv *env, jobject /*thiz*/)
+static jboolean penguin_opencore_sdk_Coredump_native_disable(JNIEnv *env, jobject /*thiz*/)
 {
-    return Opencore::enable();
+    return Opencore::Disable();
 }
 
-extern "C"
-JNIEXPORT jboolean JNICALL
-Java_penguin_opencore_sdk_Coredump_native_1diable(JNIEnv *env, jobject /*thiz*/)
-{
-    return Opencore::disable();
-}
-
-extern "C"
-JNIEXPORT jboolean JNICALL
-Java_penguin_opencore_sdk_Coredump_native_1doCoredump(JNIEnv *env, jobject /*thiz*/, jint tid, jstring filename)
+static jboolean penguin_opencore_sdk_Coredump_native_doCoredump(JNIEnv *env, jobject /*thiz*/, jint tid, jstring filename)
 {
     jboolean isCopy;
     if (filename != NULL) {
         const char *cstr = env->GetStringUTFChars(filename, &isCopy);
-        Opencore::dump(true, tid, cstr);
+        Opencore::Dump(true, cstr, getpid(), tid);
         env->ReleaseStringUTFChars(filename, cstr);
     } else {
-        Opencore::dump(true, tid, nullptr);
+        Opencore::Dump(true, nullptr, getpid(), tid);
     }
     return true;
 }
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_penguin_opencore_sdk_Coredump_native_1setCoreDir(JNIEnv *env, jobject /*thiz*/, jstring dir)
+static void penguin_opencore_sdk_Coredump_native_setCoreDir(JNIEnv *env, jobject /*thiz*/, jstring dir)
 {
     jboolean isCopy;
     if (dir != NULL) {
         const char *cstr = env->GetStringUTFChars(dir, &isCopy);
-        Opencore::setDir(cstr);
+        Opencore::SetDir(cstr);
         env->ReleaseStringUTFChars(dir, cstr);
     }
 }
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_penguin_opencore_sdk_Coredump_native_1setCoreMode(JNIEnv *env, jobject /*thiz*/, jint mode) {
-    Opencore::setMode(mode);
+static void penguin_opencore_sdk_Coredump_native_setCoreFlag(JNIEnv *env, jobject /*thiz*/, jint flag)
+{
+    Opencore::SetFlag(flag);
 }
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_penguin_opencore_sdk_Coredump_native_1setCoreFlag(JNIEnv *env, jobject /*thiz*/, jint flag) {
-    Opencore::setFlag(flag);
+static void penguin_opencore_sdk_Coredump_native_setCoreTimeout(JNIEnv *env, jobject /*thiz*/, jint sec)
+{
+    Opencore::SetTimeout(sec);
 }
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_penguin_opencore_sdk_Coredump_native_1setCoreTimeout(JNIEnv *env, jobject /*thiz*/, jint sec) {
-    Opencore::setTimeout(sec);
+static void penguin_opencore_sdk_Coredump_native_setCoreFilter(JNIEnv *env, jobject /*thiz*/, jint filter)
+{
+    Opencore::SetFilter(filter);
 }
 
+static JNINativeMethod gMethods[] =
+{
+    {
+        "getVersion",
+        "()Ljava/lang/String;",
+        (void *)penguin_opencore_sdk_Coredump_getVersion
+    },
+    {
+        "native_enable",
+        "()Z",
+        (void *)penguin_opencore_sdk_Coredump_native_enable
+    },
+    {
+        "native_disable",
+        "()Z",
+        (void *)penguin_opencore_sdk_Coredump_native_disable
+    },
+    {
+        "native_doCoredump",
+        "(ILjava/lang/String;)Z",
+        (void *)penguin_opencore_sdk_Coredump_native_doCoredump
+    },
+    {
+        "native_setCoreDir",
+        "(Ljava/lang/String;)V",
+        (void *)penguin_opencore_sdk_Coredump_native_setCoreDir
+    },
+    {
+        "native_setCoreFlag",
+        "(I)V",
+        (void *)penguin_opencore_sdk_Coredump_native_setCoreFlag
+    },
+    {
+        "native_setCoreTimeout",
+        "(I)V",
+        (void *)penguin_opencore_sdk_Coredump_native_setCoreTimeout
+    },
+    {
+        "native_setCoreFilter",
+        "(I)V",
+        (void *)penguin_opencore_sdk_Coredump_native_setCoreFilter
+    },
+};
+
 extern "C"
-JNIEXPORT void JNICALL
-Java_penguin_opencore_sdk_Coredump_native_1setCoreFilter(JNIEnv *env, jobject /*thiz*/, jint filter) {
-    Opencore::setFilter(filter);
+JNIEXPORT jboolean JNICALL
+Java_penguin_opencore_sdk_Coredump_native_1init(JNIEnv *env, jclass clazz, jobject object)
+{
+    gUser.gCoredump = (jclass)env->NewGlobalRef(clazz);
+    if (env->RegisterNatives(gUser.gCoredump, gMethods, sizeof(gMethods) / sizeof(gMethods[0])) < 0) {
+        JNI_LOGE("Init native environment fail.");
+        return false;
+    }
+    gUser.gCallbackEvent = env->GetStaticMethodID(gUser.gCoredump, "callbackEvent", "(Ljava/lang/String;)V");
+    Opencore::SetCallback(penguin_opencore_sdk_coredump_callback);
+    return true;
 }
 
 extern "C"
 JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM *vm, void * /*reserved*/)
 {
-    JNI_LOGI("Init %s environment..", Opencore::getVersion());
+    JNI_LOGI("Init %s environment..", Opencore::GetVersion());
     android::AndroidJNI::init(vm);
     return JNI_VERSION_1_4;
 }
