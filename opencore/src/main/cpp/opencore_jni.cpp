@@ -18,7 +18,7 @@
 #include <string>
 
 #ifndef LOG_TAG
-#define LOG_TAG "Opencore-SDK"
+#define LOG_TAG "Opencore"
 #endif
 
 #include "opencore/opencore.h"
