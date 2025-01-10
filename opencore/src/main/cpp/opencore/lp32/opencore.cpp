@@ -232,12 +232,12 @@ void OpencoreImpl::WriteCoreLoadSegment(int pid, FILE* fp) {
                 pread64(fd, zero, phdr[index].p_align, phdr[index].p_vaddr + (i * align_size));
                 uint32_t ret = fwrite(zero, align_size, 1, fp);
                 if (ret != 1) {
+                    JNI_LOGE("[%x] write load segment fail. %s %s",
+                            (uint32_t)phdr[index].p_vaddr, strerror(errno), maps[index].file.c_str());
                     if (errno == ENOSPC)
                         return;
 
                     need_padd_zero = true;
-                    JNI_LOGE("[%x] write load segment fail. %s %s",
-                            (uint32_t)phdr[index].p_vaddr, strerror(errno), maps[index].file.c_str());
                     break;
                 }
             }
@@ -340,6 +340,7 @@ void OpencoreImpl::Finish() {
     if (auxv) free(auxv);
     if (phdr) free(phdr);
     if (file) free(file);
+    if (zero) free(zero);
     Opencore::Finish();
 }
 

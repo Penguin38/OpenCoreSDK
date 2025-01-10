@@ -293,7 +293,6 @@ bool Opencore::Coredump(const char* filename) {
 
 void Opencore::Finish() {
     Continue();
-    if (zero) free(zero);
     maps.clear();
     JNI_LOGI("Finish done.");
 }
