@@ -77,10 +77,8 @@ void Opencore::CreateCorePrStatus(int pid) {
             sizeof(x86::pt_regs),
         };
 
-        if (ptrace(PTRACE_GETREGSET, tid, NT_PRSTATUS, &ioVec) < 0) {
-            JNI_LOGI("%s %d: %s", __func__ , tid, strerror(errno));
+        if (ptrace(PTRACE_GETREGSET, tid, NT_PRSTATUS, &ioVec) < 0)
             continue;
-        }
     }
 
     extra_note_filesz += (sizeof(Elf32_prstatus) + sizeof(Elf32_Nhdr) + 8) * prnum;
