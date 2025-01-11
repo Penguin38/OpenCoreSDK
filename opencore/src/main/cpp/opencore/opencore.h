@@ -144,6 +144,7 @@ public:
         timeout = DEF_TIMEOUT;
         zero = nullptr;
         ucontext_raw = nullptr;
+        siginfo = nullptr;
     }
 
     struct VirtualMemoryArea {
@@ -164,6 +165,7 @@ public:
     void setFilter(int f) { filter = f; }
     void setTimeout(int sec) { timeout = sec; }
     void setContext(void *raw) { ucontext_raw = raw; }
+    void setSignalInfo(void* info) { siginfo = info; }
     void setCallback(DumpCallback callback) { cb = callback; }
     void setState(int s) { state = s; }
     bool getState() { return state == STATE_ON; }
@@ -174,6 +176,7 @@ public:
     int getFilter() { return filter; }
     int getTimeout() { return timeout; }
     void* getContext() { return ucontext_raw; }
+    void* getSignalInfo() { return siginfo; }
     DumpCallback getCallback() { return cb; }
     int getExtraNoteFilesz() { return extra_note_filesz; }
     bool Coredump(const char* filename);
@@ -200,7 +203,7 @@ public:
         char* filename;
         int pid;
         int tid;
-        siginfo_t* siginfo;
+        void* siginfo;
         void* context;
     };
 
@@ -224,6 +227,7 @@ protected:
     uint32_t align_size;
     uint32_t page_size;
     void* ucontext_raw;
+    void* siginfo;
 private:
     std::string dir;
     int flag;

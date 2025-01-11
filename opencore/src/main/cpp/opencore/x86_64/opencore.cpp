@@ -90,6 +90,7 @@ void Opencore::CreateCorePrStatus(int pid) {
     }
 
     extra_note_filesz += (sizeof(Elf64_prstatus) + sizeof(Elf64_Nhdr) + 8) * prnum;
+    extra_note_filesz += sizeof(siginfo_t) + sizeof(Elf64_Nhdr) + 8;      // NT_SIGINFO
 }
 
 void Opencore::WriteCorePrStatus(FILE* fp) {
@@ -106,6 +107,7 @@ void Opencore::WriteCorePrStatus(FILE* fp) {
         fwrite(&elf_nhdr, sizeof(Elf64_Nhdr), 1, fp);
         fwrite(magic, sizeof(magic), 1, fp);
         fwrite(&prstatus[index], sizeof(Elf64_prstatus), 1, fp);
+        if (!index) WriteCoreSignalInfo(fp);
     }
 }
 

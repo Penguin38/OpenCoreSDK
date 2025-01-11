@@ -66,6 +66,7 @@ public:
     void WriteCoreProgramHeaders(FILE* fp);
 
     // Segments
+    void WriteCoreSignalInfo(FILE* fp);
     void WriteCoreAUXV(FILE* fp);
     void WriteNtFile(FILE* fp);
     void AlignNoteSegment(FILE* fp);

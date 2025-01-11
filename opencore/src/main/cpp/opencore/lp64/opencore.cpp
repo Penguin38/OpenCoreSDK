@@ -157,6 +157,26 @@ void OpencoreImpl::WriteCoreProgramHeaders(FILE* fp) {
     }
 }
 
+void OpencoreImpl::WriteCoreSignalInfo(FILE* fp) {
+    Elf64_Nhdr elf_nhdr;
+    elf_nhdr.n_namesz = NOTE_CORE_NAME_SZ;
+    elf_nhdr.n_descsz = sizeof(siginfo_t);
+    elf_nhdr.n_type = NT_SIGINFO;
+
+    char magic[8];
+    memset(magic, 0, sizeof(magic));
+    snprintf(magic, NOTE_CORE_NAME_SZ, ELFCOREMAGIC);
+
+    fwrite(&elf_nhdr, sizeof(Elf64_Nhdr), 1, fp);
+    fwrite(magic, sizeof(magic), 1, fp);
+
+    siginfo_t info;
+    memset(&info, 0x0, sizeof(siginfo_t));
+    if (getSignalInfo())
+        memcpy(&info, getSignalInfo(), sizeof(siginfo_t));
+    fwrite(&info, sizeof(siginfo_t), 1, fp);
+}
+
 void OpencoreImpl::WriteCoreAUXV(FILE* fp) {
     Elf64_Nhdr elf_nhdr;
     elf_nhdr.n_namesz = NOTE_CORE_NAME_SZ;

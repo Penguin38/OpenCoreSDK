@@ -190,6 +190,7 @@ void Opencore::Dump(Opencore::DumpOption* option) {
     if (impl) {
         impl->setPid(option->pid);
         impl->setTid(option->tid);
+        impl->setSignalInfo(option->siginfo);
 
         if (impl->getFilter() & FILTER_SIGNAL_CONTEXT)
             impl->setContext(option->context);
