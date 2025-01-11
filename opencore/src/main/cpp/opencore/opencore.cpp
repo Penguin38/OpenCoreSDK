@@ -330,7 +330,6 @@ void Opencore::Finish() {
     maps.clear();
     setContext(nullptr);
     setSignalInfo(nullptr);
-    JNI_LOGI("Finish done.");
 }
 
 bool Opencore::IsFilterSegment(Opencore::VirtualMemoryArea& vma) {

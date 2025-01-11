@@ -362,6 +362,7 @@ void OpencoreImpl::Finish() {
     if (file) free(file);
     if (zero) free(zero);
     Opencore::Finish();
+    JNI_LOGI("Finish done.");
 }
 
 } // namespace lp64
