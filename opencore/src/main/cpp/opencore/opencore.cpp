@@ -199,7 +199,9 @@ void Opencore::Dump(Opencore::DumpOption* option) {
         tid = impl->getTid();
         flag = impl->getFlag();
 
-        output.append(impl->getDir()).append("/");
+        if (impl->getDir().length() > 0) {
+            output.append(impl->getDir()).append("/");
+        }
         if (!option->filename) {
             if (!(flag & FLAG_ALL)) {
                 flag |= FLAG_CORE;
