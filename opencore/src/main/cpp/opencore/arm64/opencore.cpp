@@ -23,6 +23,7 @@
 #include <sys/ptrace.h>
 #include <sys/uio.h>
 #include <errno.h>
+#include <ucontext.h>
 
 #define DEF_VA_BITS 39
 #ifndef NT_ARM_PAC_MASK
@@ -55,13 +56,19 @@ void Opencore::CreateCorePrStatus(int pid) {
         int idx;
         if (tid == getTid()) {
             idx = 0;
+            prstatus[idx].pr_pid = tid;
             // top thread maybe use ucontext prs
+            if (getContext()) {
+                struct ucontext *context = (struct ucontext *) getContext();
+                memcpy(&prstatus[idx].pr_reg, &context->uc_mcontext.regs, sizeof(arm64::pt_regs));
+                continue;
+            }
         } else {
             // 0 top thread was truncated
             idx = (cur >= prnum) ? 0 : cur;
             ++cur;
+            prstatus[idx].pr_pid = tid;
         }
-        prstatus[idx].pr_pid = tid;
 
         struct iovec ioVec = {
             &prstatus[idx].pr_reg,

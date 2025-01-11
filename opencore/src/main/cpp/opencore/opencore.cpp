@@ -56,11 +56,11 @@ static pthread_mutex_t g_handle_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_switch_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct sigaction g_restore_action[5];
 
-void Opencore::HandleSignal(int sig) {
+void Opencore::HandleSignal(int signal, siginfo_t* /*siginfo*/, void* ucontext_raw) {
     pthread_mutex_lock(&g_handle_lock);
     Disable();
-    Dump(false, nullptr);
-    raise(sig);
+    Dump(false, nullptr, ucontext_raw);
+    raise(signal);
     pthread_mutex_unlock(&g_handle_lock);
 }
 
@@ -72,7 +72,8 @@ bool Opencore::Enable() {
             struct sigaction stact;
             struct sigaction oldact[5];
             memset(&stact, 0, sizeof(stact));
-            stact.sa_handler = Opencore::HandleSignal;
+            stact.sa_sigaction = Opencore::HandleSignal;
+            stact.sa_flags = SA_RESTART | SA_SIGINFO | SA_ONSTACK;
 
             sigaction(SIGSEGV, &stact, &oldact[0]);
             sigaction(SIGABRT, &stact, &oldact[1]);
@@ -81,7 +82,7 @@ bool Opencore::Enable() {
             sigaction(SIGFPE, &stact, &oldact[4]);
 
             for (int index = 0; index < 5; index++) {
-                if (oldact[index].sa_handler != Opencore::HandleSignal) {
+                if (oldact[index].sa_sigaction != Opencore::HandleSignal) {
                     memcpy(&g_restore_action[index], &oldact[index], sizeof(struct sigaction));
                 }
             }
@@ -145,14 +146,14 @@ void Opencore::TimeoutHandle(int) {
 }
 
 void Opencore::Dump(bool java, const char* filename) {
-    Opencore::Dump(java, filename, getpid());
+    Opencore::Dump(java, filename, getpid(), gettid(), nullptr);
 }
 
-void Opencore::Dump(bool java, const char* filename, int pid) {
-    Opencore::Dump(java, filename, getpid(), gettid());
+void Opencore::Dump(bool java, const char* filename, void* ucontext_raw) {
+    Opencore::Dump(java, filename, getpid(), gettid(), ucontext_raw);
 }
 
-void Opencore::Dump(bool java, const char* filename, int pid, int tid) {
+void Opencore::Dump(bool java, const char* filename, int pid, int tid, void* ucontext_raw) {
     int ori_dumpable;
     int flag;
     char comm[16];
@@ -165,6 +166,10 @@ void Opencore::Dump(bool java, const char* filename, int pid, int tid) {
     if (impl) {
         impl->setPid(getpid());
         impl->setTid(tid);
+
+        if (impl->getFilter() & FILTER_SIGNAL_CONTEXT)
+            impl->setContext(ucontext_raw);
+
         output.append(impl->getDir()).append("/");
         if (!filename) {
             flag = impl->getFlag();
@@ -294,6 +299,7 @@ bool Opencore::Coredump(const char* filename) {
 void Opencore::Finish() {
     Continue();
     maps.clear();
+    setContext(nullptr);
     JNI_LOGI("Finish done.");
 }
 

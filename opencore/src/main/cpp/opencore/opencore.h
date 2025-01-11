@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <signal.h>
 #include <string>
 #include <vector>
 #include <type_traits>
@@ -126,6 +127,7 @@ public:
     static const int FILTER_SHARED_VMA = 1 << 2;
     static const int FILTER_SANITIZER_SHADOW_VMA = 1 << 3;
     static const int FILTER_NON_READ_VMA = 1 << 4;
+    static const int FILTER_SIGNAL_CONTEXT = 1 << 5;
 
     Opencore() {
         flag = FLAG_CORE
@@ -138,9 +140,10 @@ public:
         extra_note_filesz = 0;
         page_size = sysconf(_SC_PAGE_SIZE);
         align_size = ELF_PAGE_SIZE;
-        zero = nullptr;
         state = STATE_OFF;
         timeout = DEF_TIMEOUT;
+        zero = nullptr;
+        ucontext_raw = nullptr;
     }
 
     struct VirtualMemoryArea {
@@ -160,6 +163,7 @@ public:
     void setFlag(int f) { flag = f; }
     void setFilter(int f) { filter = f; }
     void setTimeout(int sec) { timeout = sec; }
+    void setContext(void *raw) { ucontext_raw = raw; }
     void setCallback(DumpCallback callback) { cb = callback; }
     void setState(int s) { state = s; }
     bool getState() { return state == STATE_ON; }
@@ -169,6 +173,7 @@ public:
     int getTid() { return tid; }
     int getFilter() { return filter; }
     int getTimeout() { return timeout; }
+    void* getContext() { return ucontext_raw; }
     DumpCallback getCallback() { return cb; }
     int getExtraNoteFilesz() { return extra_note_filesz; }
     bool Coredump(const char* filename);
@@ -183,10 +188,10 @@ public:
 
     static Opencore* GetInstance();
     static const char* GetVersion() { return OPENCORE_VERSION; }
-    static void HandleSignal(int);
+    static void HandleSignal(int signal, siginfo_t* siginfo, void* ucontext_raw);
     static void Dump(bool java, const char* filename);
-    static void Dump(bool java, const char* filename, int pid);
-    static void Dump(bool java, const char* filename, int pid, int tid);
+    static void Dump(bool java, const char* filename, void* ucontext_raw);
+    static void Dump(bool java, const char* filename, int pid, int tid, void* ucontext_raw);
     static bool Enable();
     static bool Disable();
     static void SetDir(const char* dir);
@@ -202,6 +207,7 @@ protected:
     uint8_t* zero;
     uint32_t align_size;
     uint32_t page_size;
+    void* ucontext_raw;
 private:
     std::string dir;
     int flag;

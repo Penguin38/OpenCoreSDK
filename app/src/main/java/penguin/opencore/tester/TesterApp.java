@@ -43,7 +43,8 @@ public class TesterApp extends Application {
                                           // | Coredump.FILTER_FILE_VMA
                                           // | Coredump.FILTER_SHARED_VMA
                                            | Coredump.FILTER_SANITIZER_SHADOW_VMA
-                                           | Coredump.FILTER_NON_READ_VMA);
+                                           | Coredump.FILTER_NON_READ_VMA
+                                           | Coredump.FILTER_SIGNAL_CONTEXT);
 
         Coredump.getInstance().enable(Coredump.JAVA);
         Coredump.getInstance().enable(Coredump.NATIVE);

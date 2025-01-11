@@ -23,6 +23,7 @@
 #include <sys/ptrace.h>
 #include <sys/uio.h>
 #include <errno.h>
+#include <ucontext.h>
 
 namespace x86 {
 
@@ -39,13 +40,37 @@ void Opencore::CreateCorePrStatus(int pid) {
         int idx;
         if (tid == getTid()) {
             idx = 0;
+            prstatus[idx].pr_pid = tid;
             // top thread maybe use ucontext prs
+            if (getContext()) {
+                struct ucontext *context = (struct ucontext *) getContext();
+                x86::pt_regs uc_regs;
+                memset(&uc_regs, 0x0, sizeof(x86::pt_regs));
+                uc_regs.ebx = context->uc_mcontext.gregs[8];
+                uc_regs.ecx = context->uc_mcontext.gregs[10];
+                uc_regs.edx = context->uc_mcontext.gregs[9];
+                uc_regs.esi = context->uc_mcontext.gregs[5];
+                uc_regs.edi = context->uc_mcontext.gregs[4];
+                uc_regs.ebp = context->uc_mcontext.gregs[6];
+                uc_regs.eax = context->uc_mcontext.gregs[11];
+                uc_regs.ds = context->uc_mcontext.gregs[3];
+                uc_regs.es = context->uc_mcontext.gregs[2];
+                uc_regs.fs = context->uc_mcontext.gregs[1];
+                uc_regs.gs = context->uc_mcontext.gregs[0];
+                uc_regs.orig_eax = context->uc_mcontext.gregs[11];
+                uc_regs.eip = context->uc_mcontext.gregs[14];
+                uc_regs.eflags = context->uc_mcontext.gregs[16];
+                uc_regs.esp = context->uc_mcontext.gregs[7];
+                uc_regs.ss = context->uc_mcontext.gregs[15];
+                memcpy(&prstatus[idx].pr_reg, &uc_regs, sizeof(x86::pt_regs));
+                continue;
+            }
         } else {
             // 0 top thread was truncated
             idx = (cur >= prnum) ? 0 : cur;
             ++cur;
+            prstatus[idx].pr_pid = tid;
         }
-        prstatus[idx].pr_pid = tid;
 
         struct iovec ioVec = {
             &prstatus[idx].pr_reg,

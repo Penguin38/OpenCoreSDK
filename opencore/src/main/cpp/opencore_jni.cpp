@@ -80,10 +80,10 @@ static jboolean penguin_opencore_sdk_Coredump_native_doCoredump(JNIEnv *env, job
     jboolean isCopy;
     if (filename != NULL) {
         const char *cstr = env->GetStringUTFChars(filename, &isCopy);
-        Opencore::Dump(true, cstr, getpid(), tid);
+        Opencore::Dump(true, cstr, getpid(), tid, nullptr);
         env->ReleaseStringUTFChars(filename, cstr);
     } else {
-        Opencore::Dump(true, nullptr, getpid(), tid);
+        Opencore::Dump(true, nullptr, getpid(), tid, nullptr);
     }
     return true;
 }

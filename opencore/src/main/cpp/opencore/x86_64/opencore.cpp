@@ -23,6 +23,7 @@
 #include <sys/ptrace.h>
 #include <sys/uio.h>
 #include <errno.h>
+#include <ucontext.h>
 
 namespace x86_64 {
 
@@ -39,13 +40,43 @@ void Opencore::CreateCorePrStatus(int pid) {
         int idx;
         if (tid == getTid()) {
             idx = 0;
+            prstatus[idx].pr_pid = tid;
             // top thread maybe use ucontext prs
+            if (getContext()) {
+                struct ucontext *context = (struct ucontext *) getContext();
+                x86_64::pt_regs uc_regs;
+                memset(&uc_regs, 0x0, sizeof(x86_64::pt_regs));
+                uc_regs.r15 = context->uc_mcontext.gregs[7];
+                uc_regs.r14 = context->uc_mcontext.gregs[6];
+                uc_regs.r13 = context->uc_mcontext.gregs[5];
+                uc_regs.r12 = context->uc_mcontext.gregs[4];
+                uc_regs.rbp = context->uc_mcontext.gregs[10];
+                uc_regs.rbx = context->uc_mcontext.gregs[11];
+                uc_regs.r11 = context->uc_mcontext.gregs[3];
+                uc_regs.r10 = context->uc_mcontext.gregs[2];
+                uc_regs.r9 = context->uc_mcontext.gregs[1];
+                uc_regs.r8 = context->uc_mcontext.gregs[0];
+                uc_regs.rax = context->uc_mcontext.gregs[13];
+                uc_regs.rcx = context->uc_mcontext.gregs[14];
+                uc_regs.rdx = context->uc_mcontext.gregs[12];
+                uc_regs.rsi = context->uc_mcontext.gregs[9];
+                uc_regs.rdi = context->uc_mcontext.gregs[8];
+                uc_regs.rip = context->uc_mcontext.gregs[16];
+                uc_regs.cs = context->uc_mcontext.gregs[18];
+                uc_regs.flags = context->uc_mcontext.gregs[17];
+                uc_regs.rsp = context->uc_mcontext.gregs[15];
+                uc_regs.ss = context->uc_mcontext.gregs[21];
+                uc_regs.fs = context->uc_mcontext.gregs[20];
+                uc_regs.gs = context->uc_mcontext.gregs[19];
+                memcpy(&prstatus[idx].pr_reg, &uc_regs, sizeof(x86_64::pt_regs));
+                continue;
+            }
         } else {
             // 0 top thread was truncated
             idx = (cur >= prnum) ? 0 : cur;
             ++cur;
+            prstatus[idx].pr_pid = tid;
         }
-        prstatus[idx].pr_pid = tid;
 
         struct iovec ioVec = {
             &prstatus[idx].pr_reg,
