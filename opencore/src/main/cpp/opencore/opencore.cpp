@@ -56,10 +56,10 @@ static pthread_mutex_t g_handle_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_switch_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct sigaction g_restore_action[5];
 
-void Opencore::HandleSignal(int signal, siginfo_t* /*siginfo*/, void* ucontext_raw) {
+void Opencore::HandleSignal(int signal, siginfo_t* siginfo, void* ucontext_raw) {
     pthread_mutex_lock(&g_handle_lock);
     Disable();
-    Dump(false, nullptr, ucontext_raw);
+    Dump(siginfo, ucontext_raw);
     raise(signal);
     pthread_mutex_unlock(&g_handle_lock);
 }
@@ -146,16 +146,40 @@ void Opencore::TimeoutHandle(int) {
 }
 
 void Opencore::Dump(bool java, const char* filename) {
-    Opencore::Dump(java, filename, getpid(), gettid(), nullptr);
+    Opencore::DumpOption option;
+    option.java = java;
+    option.filename = const_cast<char *>(filename);
+    option.pid = getpid();
+    option.tid = gettid();
+    Opencore::Dump(&option);
 }
 
-void Opencore::Dump(bool java, const char* filename, void* ucontext_raw) {
-    Opencore::Dump(java, filename, getpid(), gettid(), ucontext_raw);
+void Opencore::Dump(bool java, const char* filename, int tid) {
+    Opencore::DumpOption option;
+    option.java = java;
+    option.filename = const_cast<char *>(filename);
+    option.pid = getpid();
+    option.tid = tid;
+    Opencore::Dump(&option);
 }
 
-void Opencore::Dump(bool java, const char* filename, int pid, int tid, void* ucontext_raw) {
+void Opencore::Dump(siginfo_t* siginfo, void* ucontext_raw) {
+    Opencore::DumpOption option;
+    option.pid = getpid();
+    option.tid = gettid();
+    option.siginfo = siginfo;
+    option.context = ucontext_raw;
+    Opencore::Dump(&option);
+}
+
+void Opencore::Dump(Opencore::DumpOption* option) {
+    if (!option || !option->pid) {
+        JNI_LOGE("No any dump!");
+        return;
+    }
+
     int ori_dumpable;
-    int flag;
+    int flag, pid, tid;
     char comm[16];
     bool need_split = false;
     bool need_restore_dumpable = false;
@@ -164,15 +188,18 @@ void Opencore::Dump(bool java, const char* filename, int pid, int tid, void* uco
 
     Opencore* impl = GetInstance();
     if (impl) {
-        impl->setPid(getpid());
-        impl->setTid(tid);
+        impl->setPid(option->pid);
+        impl->setTid(option->tid);
 
         if (impl->getFilter() & FILTER_SIGNAL_CONTEXT)
-            impl->setContext(ucontext_raw);
+            impl->setContext(option->context);
+
+        pid = impl->getPid();
+        tid = impl->getTid();
+        flag = impl->getFlag();
 
         output.append(impl->getDir()).append("/");
-        if (!filename) {
-            flag = impl->getFlag();
+        if (!option->filename) {
             if (!(flag & FLAG_ALL)) {
                 flag |= FLAG_CORE;
                 flag |= FLAG_TID;
@@ -182,7 +209,6 @@ void Opencore::Dump(bool java, const char* filename, int pid, int tid, void* uco
                 output.append("core.");
 
             if (flag & FLAG_PROCESS_COMM) {
-                pid = impl->getPid();
                 char comm_path[32];
                 snprintf(comm_path, sizeof(comm_path), "/proc/%d/comm", pid);
                 int fd = open(comm_path, O_RDONLY);
@@ -255,7 +281,7 @@ void Opencore::Dump(bool java, const char* filename, int pid, int tid, void* uco
                 output.append(std::to_string(tv.tv_sec));
             }
         } else {
-            output.append(filename);
+            output.append(option->filename);
         }
 
         ori_dumpable = prctl(PR_GET_DUMPABLE);
@@ -272,7 +298,7 @@ void Opencore::Dump(bool java, const char* filename, int pid, int tid, void* uco
 
         DumpCallback callback = impl->getCallback();
         if (callback) {
-            callback(java, output.c_str());
+            callback(option->java, output.c_str());
         }
     } else {
         JNI_LOGI("Not support coredump!!");

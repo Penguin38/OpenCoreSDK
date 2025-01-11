@@ -189,9 +189,25 @@ public:
     static Opencore* GetInstance();
     static const char* GetVersion() { return OPENCORE_VERSION; }
     static void HandleSignal(int signal, siginfo_t* siginfo, void* ucontext_raw);
+
+    class DumpOption {
+    public:
+        DumpOption()
+            : java(false), filename(nullptr),
+              pid(INVALID_TID), tid(INVALID_TID),
+              siginfo(nullptr), context(nullptr) {}
+        bool java;
+        char* filename;
+        int pid;
+        int tid;
+        siginfo_t* siginfo;
+        void* context;
+    };
+
     static void Dump(bool java, const char* filename);
-    static void Dump(bool java, const char* filename, void* ucontext_raw);
-    static void Dump(bool java, const char* filename, int pid, int tid, void* ucontext_raw);
+    static void Dump(bool java, const char* filename, int tid);
+    static void Dump(siginfo_t* siginfo, void* ucontext_raw);
+    static void Dump(DumpOption* option);
     static bool Enable();
     static bool Disable();
     static void SetDir(const char* dir);
