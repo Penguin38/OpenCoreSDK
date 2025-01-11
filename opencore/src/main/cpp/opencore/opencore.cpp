@@ -327,6 +327,7 @@ void Opencore::Finish() {
     Continue();
     maps.clear();
     setContext(nullptr);
+    setSignalInfo(nullptr);
     JNI_LOGI("Finish done.");
 }
 
@@ -378,11 +379,11 @@ void Opencore::StopTheWorld(int pid) {
             }
 
             pid_t tid = std::atoi(entry->d_name);
+            pids.push_back(tid);
             if (ptrace(PTRACE_ATTACH, tid, NULL, 0) < 0) {
                 JNI_LOGW("%s %d: %s", __func__ , tid, strerror(errno));
                 continue;
             }
-            pids.push_back(tid);
             int status = 0;
             waitpid(tid, &status, WUNTRACED);
         }
@@ -394,7 +395,7 @@ void Opencore::Continue() {
     for (int index = 0; index < pids.size(); index++) {
         pid_t tid = pids[index];
         if (ptrace(PTRACE_DETACH, tid, NULL, 0) < 0) {
-            JNI_LOGW("%s %d: %s", __func__ , tid, strerror(errno));
+            JNI_LOGV("%s %d: %s", __func__ , tid, strerror(errno));
             continue;
         }
     }
