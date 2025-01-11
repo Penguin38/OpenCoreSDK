@@ -68,7 +68,7 @@ afterEvaluate {
                 artifact androidSourcesJar
                 groupId = 'penguin.opencore.sdk'
                 artifactId = 'opencore'
-                version = '1.4.6'
+                version = '1.4.7'
             }
         }
     }

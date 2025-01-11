@@ -90,7 +90,7 @@
                                    |          |
                                     ----------
 */
-#define OPENCORE_VERSION "opencore-1.4.6"
+#define OPENCORE_VERSION "opencore-1.4.7"
 typedef void (*DumpCallback)(bool java, const char* path);
 
 template<typename T>
