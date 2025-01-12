@@ -83,6 +83,7 @@ public:
     void Finish();
     void CreateCorePrStatus(int pid);
     void WriteCorePrStatus(FILE* fp);
+    bool IsSpecialFilterSegment(Opencore::VirtualMemoryArea& vma);
     int getMachine() { return EM_X86_64; }
 private:
     int prnum;

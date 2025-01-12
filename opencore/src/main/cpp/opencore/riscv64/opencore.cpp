@@ -85,6 +85,10 @@ void Opencore::WriteCorePrStatus(FILE* fp) {
     }
 }
 
+bool Opencore::IsSpecialFilterSegment(Opencore::VirtualMemoryArea& vma) {
+    return false;
+}
+
 void Opencore::Finish() {
     if (prstatus) free(prstatus);
     lp64::OpencoreImpl::Finish();

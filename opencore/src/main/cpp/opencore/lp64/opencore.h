@@ -75,6 +75,7 @@ public:
 
     virtual void CreateCorePrStatus(int pid) = 0;
     virtual void WriteCorePrStatus(FILE* fp) = 0;
+    virtual bool IsSpecialFilterSegment(Opencore::VirtualMemoryArea& vma) = 0;
 protected:
     Elf64_Ehdr ehdr;
     Elf64_Phdr *phdr;
