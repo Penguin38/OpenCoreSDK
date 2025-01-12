@@ -90,7 +90,6 @@
                                    |          |
                                     ----------
 */
-#define OPENCORE_VERSION "opencore-1.4.7"
 typedef void (*DumpCallback)(bool java, const char* path);
 
 template<typename T>
@@ -191,7 +190,7 @@ public:
     static void ParseMaps(int pid, std::vector<VirtualMemoryArea>& maps);
 
     static Opencore* GetInstance();
-    static const char* GetVersion() { return OPENCORE_VERSION; }
+    static const char* GetVersion() { return __OPENCORE_VERSION__; }
     static void HandleSignal(int signal, siginfo_t* siginfo, void* ucontext_raw);
 
     class DumpOption {

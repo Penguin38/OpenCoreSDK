@@ -16,6 +16,15 @@
 cmake_minimum_required(VERSION 3.10.2)
 project("opencore")
 
+file(READ ${CMAKE_SOURCE_DIR}/VERSION version_contents)
+string(REGEX MATCH "MAJOR=([0-9]+)" _ ${version_contents})
+set(MAJOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "MINOR=([0-9]+)" _ ${version_contents})
+set(MINOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "PATCH=([0-9]+)" _ ${version_contents})
+set(PATCH ${CMAKE_MATCH_1})
+add_definitions(-D__OPENCORE_VERSION__="opencore-${MAJOR}.${MINOR}.${PATCH}")
+
 include_directories(.)
 include_directories(eajni/include/)
 aux_source_directory(eajni SRC_LIST)
