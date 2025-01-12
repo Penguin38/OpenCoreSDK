@@ -57,6 +57,7 @@ public:
     void CreateCoreHeader();
     void CreateCoreNoteHeader();
     void CreateCoreAUXV(int pid);
+    void SpecialCoreFilter();
 
     // ELF Header
     void WriteCoreHeader(FILE* fp);

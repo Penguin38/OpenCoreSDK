@@ -72,9 +72,6 @@ void OpencoreImpl::ParseProcessMapsVma(int pid) {
         Opencore::VirtualMemoryArea& vma = maps[index];
         ParserPhdr(index, vma);
         ParserNtFile(index, vma);
-
-        if (IsFilterSegment(vma))
-            phdr[index].p_filesz = 0x0;
     }
 }
 
@@ -127,6 +124,14 @@ void OpencoreImpl::CreateCoreAUXV(int pid) {
         }
 
         fclose(fp);
+    }
+}
+
+void OpencoreImpl::SpecialCoreFilter() {
+    for (int index = 0; index < maps.size(); ++index) {
+        Opencore::VirtualMemoryArea& vma = maps[index];
+        if (IsFilterSegment(vma))
+            phdr[index].p_filesz = 0x0;
     }
 }
 
@@ -276,7 +281,7 @@ void OpencoreImpl::WriteCoreLoadSegment(int pid, FILE* fp) {
 
 bool OpencoreImpl::DoCoredump(const char* filename) {
     Prepare(filename);
-    
+
     FILE* fp = fopen(filename, "wb");
     if (!fp) {
         JNI_LOGE("%s %s: %s", __func__, filename, strerror(errno));
@@ -290,6 +295,7 @@ bool OpencoreImpl::DoCoredump(const char* filename) {
     CreateCoreNoteHeader();
     CreateCorePrStatus(getPid());
     CreateCoreAUXV(getPid());
+    SpecialCoreFilter();
 
     // ELF Header
     WriteCoreHeader(fp);
