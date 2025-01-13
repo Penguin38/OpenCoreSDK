@@ -186,6 +186,7 @@ public:
     virtual int getMachine() { return EM_NONE; }
     bool IsFilterSegment(Opencore::VirtualMemoryArea& vma);
     void StopTheWorld(int pid);
+    bool StopTheThread(int tid);
     void Continue();
     static void ParseMaps(int pid, std::vector<VirtualMemoryArea>& maps);
 
