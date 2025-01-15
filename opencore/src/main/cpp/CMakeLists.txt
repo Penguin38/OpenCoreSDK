@@ -62,5 +62,5 @@ add_library(opencore SHARED
             opencore/opencore.cpp
             ${OPENCORE_IMPL}
             opencore_jni.cpp)
-target_link_libraries(opencore ${log-lib} eajni)
+target_link_libraries(opencore eajni)
 set_target_properties(opencore PROPERTIES LINK_FLAGS "-Wl,-z,max-page-size=16384")
