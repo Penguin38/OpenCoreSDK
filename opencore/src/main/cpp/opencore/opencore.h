@@ -214,6 +214,7 @@ public:
     static void Dump(DumpOption* option);
     static bool Enable();
     static bool Disable();
+    static void IgnoreHandler();
     static void SetDir(const char* dir);
     static void SetCallback(DumpCallback cb);
     static void SetFlag(int flag);

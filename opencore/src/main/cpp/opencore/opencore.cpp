@@ -54,7 +54,7 @@ Opencore* Opencore::GetInstance() {
 
 static pthread_mutex_t g_handle_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_switch_lock = PTHREAD_MUTEX_INITIALIZER;
-static struct sigaction g_restore_action[5];
+static struct sigaction g_restore_action[5] = {0};
 
 void Opencore::HandleSignal(int signal, siginfo_t* siginfo, void* ucontext_raw) {
     pthread_mutex_lock(&g_handle_lock);
@@ -110,6 +110,22 @@ bool Opencore::Disable() {
         return true;
     }
     return false;
+}
+
+void Opencore::IgnoreHandler() {
+    // only child process use
+    struct sigaction stact;
+    memset(&stact, 0, sizeof(stact));
+    stact.sa_handler = SIG_IGN;
+    stact.sa_flags = SA_RESTART;
+    sigaction(SIGCHLD, &stact, NULL);
+
+    // ignore opencore signal handler
+    sigaction(SIGSEGV, &stact, NULL);
+    sigaction(SIGABRT, &stact, NULL);
+    sigaction(SIGBUS, &stact, NULL);
+    sigaction(SIGILL, &stact, NULL);
+    sigaction(SIGFPE, &stact, NULL);
 }
 
 void Opencore::SetDir(const char *dir) {
@@ -311,7 +327,7 @@ void Opencore::Dump(Opencore::DumpOption* option) {
 bool Opencore::Coredump(const char* filename) {
     pid_t child = fork();
     if (child == 0) {
-        Disable();
+        IgnoreHandler();
         signal(SIGALRM, Opencore::TimeoutHandle);
         alarm(getTimeout());
         DoCoredump(filename);
@@ -389,16 +405,15 @@ void Opencore::StopTheWorld(int pid) {
 bool Opencore::StopTheThread(int tid) {
     pids.push_back(tid);
     if (ptrace(PTRACE_ATTACH, tid, NULL, 0) < 0) {
-        JNI_LOGW("%s %d: %s\n", __func__ , tid, strerror(errno));
+        JNI_LOGW("%s %d: %s", __func__ , tid, strerror(errno));
         return false;
     }
     int status = 0;
     int result = waitpid(tid, &status, WUNTRACED | __WALL);
     if (result != tid) {
-        JNI_LOGW("waitpid failed on %d while detaching\n", tid);
+        JNI_LOGW("waitpid failed on %d while detaching", tid);
         return false;
     }
-
     if (WIFSTOPPED(status)) {
         int received_signal = 0;
         if (status >> 16 == PTRACE_EVENT_STOP) {
@@ -408,7 +423,7 @@ bool Opencore::StopTheThread(int tid) {
         }
         return true;
     }
-    JNI_LOGW("waitpid failed on %d while non-stop, status 0x%x\n", tid, status);
+    JNI_LOGW("waitpid failed on %d while non-stop, status 0x%x", tid, status);
     return false;
 }
 
