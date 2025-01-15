@@ -1,4 +1,4 @@
-# 技术体系
+# Techincal System
 ![core-analysis](https://raw.githubusercontent.com/Penguin38/OpenCoreAnalysisKit/refs/heads/main/doc/OpenCoreAnalyzer.jpg)
 
 | Project      | Path                                              |
@@ -8,7 +8,7 @@
 |crash-android | https://github.com/Penguin38/crash-android        |
 |OpenCoreSDK   | https://github.com/Penguin38/OpenCoreSDK          |
 
-## 构建项目依赖
+## Build
 ```
 allprojects {
     repositories {
@@ -33,16 +33,16 @@ dependencies {
     implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.4.10'
 }
 ```
-## 例子
+## Simple
 ```
 {
-    //  初始化组件
+    //  init opencore env
     Coredump.getInstance().init();
 
-    //  设置超时时间 (单位秒)
+    //  setting timeout (second)
     Coredump.getInstance().setCoreTimeout(Coredump.DEF_TIMEOUT);
 
-    //  设置 Coredump 文件名规则
+    //  setting core filename rule
     Coredump.getInstance().setCoreFlag(Coredump.FLAG_CORE
                                      | Coredump.FLAG_PROCESS_COMM
                                      | Coredump.FLAG_PID
@@ -50,7 +50,7 @@ dependencies {
                                      | Coredump.FLAG_TID
                                      | Coredump.FLAG_TIMESTAMP);
     
-    //  设置过滤条件
+    //  setting core filter
     Coredump.getInstance().setCoreFilter(Coredump.FILTER_SPECIAL_VMA
                                       // | Coredump.FILTER_FILE_VMA
                                       // | Coredump.FILTER_SHARED_VMA
@@ -58,16 +58,16 @@ dependencies {
                                        | Coredump.FILTER_NON_READ_VMA
                                        | Coredump.FILTER_SIGNAL_CONTEXT);
 
-    //  设置 Coredump 保存目录
+    //  setting core save dir
     Coredump.getInstance().setCoreDir(...);
    
-    //  Java Crash 生成 Coredump
+    //  Java Crash
     Coredump.getInstance().enable(Coredump.JAVA);
     
-    //  Native Crash 生成 Coredump
+    //  Native Crash
     Coredump.getInstance().enable(Coredump.NATIVE);
     
-    //  设置监听器
+    //  setting core listener
     Coredump.getInstance().setListener(new Coredump.Listener() {
         @Override
         public void onCompleted(String path) {
@@ -75,7 +75,7 @@ dependencies {
         }
     });
 
-    //  主动生成当前时刻 Coredump
+    //  current time core
     Coredump.getInstance().doCoredump();
 }
 ```
