@@ -42,54 +42,6 @@
 
 #define GENMASK_UL(h, l) (((~0ULL) << (l)) & (~0ULL >> (64 - 1 - (h))))
 
-/*
-             ---------- <-
-            |          |  \
-          --| Program  |   \
-         |  | 1 Header |   |
-         |  |          |   |
-         |   ----------    |
-         |  |          |   |        ----------
-       --|--| Program  |   |       |          |
-      |  |  | 2 Header |   |       |ELF Header|
-      |  |  |          |   \       |          |
-      |  |   ----------     ------- ----------       ----> ----------
-      |  |  |**********|           |          |     |     |          |
-      |  |  |**********|           |          |     |     | Thread 1 |
-      |  |  |**********|           |  Program |     |     | Registers|
-      |  |  |**********|           |  Headers |     |     |          |
-      |  |  |**********|           |          |     |      ----------
-      |  |  |**********|           |          |    /      |          |
-      |  |  |**********|           |          |   /       | Thread 2 |
-      |  |   ----------            |          |  /        | Registers|
-      |  |  |          |     ------ ---------- --         |          |
-    --|--|--| Program  |    /      |          |            ----------
-   |  |  |  | N Header |   |     ->|  Segment |           |**********|
-   |  |  |  |          |   /    |  | (PT_NOTE)|           |**********|
-   |  |  |   ---------- <--   --   |          |           |**********|
-   |  |  |                   |      ---------- --         |**********|
-   |  |   -------------------      |          |  \         ----------
-   |  |                            |  Segment |   \       |          |
-   |   --------------------------->| (PT_LOAD)|    |      | Thread N |
-   |                               |          |    |      | Registers|
-   |                                ----------     |      |          |
-   |                               |          |    |       ----------
-   |                               |  Segment |    \      |          |
-   |                               | (PT_LOAD)|     \     |   AUXV   |
-   |                               |          |      \    |          |
-   |                                ----------        ---> ----------
-   |                               |**********|
-   |                               |**********|
-   |                               |**********|
-   |                               |**********|
-   |                               |**********|
-   |                                ----------
-   |                               |          |
-    ------------------------------>|  Segment |
-                                   | (PT_LOAD)|
-                                   |          |
-                                    ----------
-*/
 typedef void (*DumpCallback)(const char* path);
 
 template<typename T>
@@ -113,11 +65,6 @@ public:
     static const int FLAG_ALL = FLAG_CORE | FLAG_PROCESS_COMM | FLAG_PID
                               | FLAG_THREAD_COMM | FLAG_TID | FLAG_TIMESTAMP;
 
-    static const int STATE_ON = 1;
-    static const int STATE_OFF = 0;
-
-    static const int DEF_TIMEOUT = 120;
-
     static const int INVALID_TID = 0;
 
     static const int FILTER_NONE = 0x0;
@@ -128,6 +75,11 @@ public:
     static const int FILTER_NON_READ_VMA = 1 << 4;
     static const int FILTER_SIGNAL_CONTEXT = 1 << 5;
     static const int FILTER_MINIDUMP = 1 << 6;
+
+    /** only opencore-sdk append **/
+    static const int STATE_ON = 1;
+    static const int STATE_OFF = 0;
+    static const int DEF_TIMEOUT = 120;
 
     Opencore() {
         flag = FLAG_CORE
@@ -140,11 +92,13 @@ public:
         extra_note_filesz = 0;
         page_size = sysconf(_SC_PAGE_SIZE);
         align_size = ELF_PAGE_SIZE;
-        state = STATE_OFF;
-        timeout = DEF_TIMEOUT;
         zero = nullptr;
+
+        /** only opencore-sdk append **/
         ucontext_raw = nullptr;
         siginfo = nullptr;
+        state = STATE_OFF;
+        timeout = DEF_TIMEOUT;
     }
 
     struct VirtualMemoryArea {
@@ -161,23 +115,12 @@ public:
     void setDir(const char* d) { dir = d; }
     void setPid(int p) { pid = p; }
     void setTid(int t) { tid = t; }
-    void setFlag(int f) { flag = f; }
     void setFilter(int f) { filter = f; }
-    void setTimeout(int sec) { timeout = sec; }
-    void setContext(void *raw) { ucontext_raw = raw; }
-    void setSignalInfo(void* info) { siginfo = info; }
-    void setCallback(DumpCallback callback) { cb = callback; }
-    void setState(int s) { state = s; }
-    bool getState() { return state == STATE_ON; }
     std::string& getDir() { return dir; }
     int getFlag() { return flag; }
     int getPid() { return pid; }
     int getTid() { return tid; }
     int getFilter() { return filter; }
-    int getTimeout() { return timeout; }
-    void* getContext() { return ucontext_raw; }
-    void* getSignalInfo() { return siginfo; }
-    DumpCallback getCallback() { return cb; }
     int getExtraNoteFilesz() { return extra_note_filesz; }
     bool Coredump(const char* filename);
     virtual void Finish();
@@ -189,6 +132,19 @@ public:
     bool StopTheThread(int tid);
     void Continue();
     static void ParseMaps(int pid, std::vector<VirtualMemoryArea>& maps);
+
+    /** only opencore-sdk append **/
+    void setFlag(int f) { flag = f; }
+    void setTimeout(int sec) { timeout = sec; }
+    void setContext(void *raw) { ucontext_raw = raw; }
+    void setSignalInfo(void* info) { siginfo = info; }
+    void setState(int s) { state = s; }
+    void setCallback(DumpCallback callback) { cb = callback; }
+    bool getState() { return state == STATE_ON; }
+    int getTimeout() { return timeout; }
+    void* getContext() { return ucontext_raw; }
+    void* getSignalInfo() { return siginfo; }
+    DumpCallback getCallback() { return cb; }
 
     static Opencore* GetInstance();
     static const char* GetVersion() { return __OPENCORE_VERSION__; }
@@ -227,6 +183,8 @@ protected:
     uint8_t* zero;
     uint32_t align_size;
     uint32_t page_size;
+
+    /** only opencore-sdk append **/
     void* ucontext_raw;
     void* siginfo;
 private:
@@ -235,6 +193,8 @@ private:
     int pid;
     int tid;
     int filter;
+
+    /** only opencore-sdk append **/
     DumpCallback cb;
     int state;
     int timeout;
