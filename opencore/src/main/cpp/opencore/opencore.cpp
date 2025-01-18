@@ -161,18 +161,16 @@ void Opencore::TimeoutHandle(int) {
     _exit(0);
 }
 
-void Opencore::Dump(bool java, const char* filename) {
+void Opencore::Dump(const char* filename) {
     Opencore::DumpOption option;
-    option.java = java;
     option.filename = const_cast<char *>(filename);
     option.pid = getpid();
     option.tid = gettid();
     Opencore::Dump(&option);
 }
 
-void Opencore::Dump(bool java, const char* filename, int tid) {
+void Opencore::Dump(const char* filename, int tid) {
     Opencore::DumpOption option;
-    option.java = java;
     option.filename = const_cast<char *>(filename);
     option.pid = getpid();
     option.tid = tid;
@@ -317,7 +315,7 @@ void Opencore::Dump(Opencore::DumpOption* option) {
 
         DumpCallback callback = impl->getCallback();
         if (callback) {
-            callback(option->java, output.c_str());
+            callback(output.c_str());
         }
     } else {
         JNI_LOGI("Not support coredump!!");

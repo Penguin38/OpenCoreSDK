@@ -90,7 +90,7 @@
                                    |          |
                                     ----------
 */
-typedef void (*DumpCallback)(bool java, const char* path);
+typedef void (*DumpCallback)(const char* path);
 
 template<typename T>
 constexpr T RoundDown(T x, std::remove_reference_t<T> n) {
@@ -197,10 +197,9 @@ public:
     class DumpOption {
     public:
         DumpOption()
-            : java(false), filename(nullptr),
+            : filename(nullptr),
               pid(INVALID_TID), tid(INVALID_TID),
               siginfo(nullptr), context(nullptr) {}
-        bool java;
         char* filename;
         int pid;
         int tid;
@@ -208,8 +207,8 @@ public:
         void* context;
     };
 
-    static void Dump(bool java, const char* filename);
-    static void Dump(bool java, const char* filename, int tid);
+    static void Dump(const char* filename);
+    static void Dump(const char* filename, int tid);
     static void Dump(siginfo_t* siginfo, void* ucontext_raw);
     static void Dump(DumpOption* option);
     static bool Enable();
