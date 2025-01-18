@@ -30,7 +30,7 @@ dependencyResolutionManagement {
 ```
 dependencies {
     ...
-    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.4.10'
+    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.4.11'
 }
 ```
 ## Simple
@@ -67,6 +67,9 @@ dependencies {
     //  Native Crash
     Coredump.getInstance().enable(Coredump.NATIVE);
     
+    //  setting complete post timeout
+    Coredump.getInstance().setCompletePostTimeout(Coredump.DEF_COMPLETE_POST_TIMEOUT);
+
     //  setting core listener
     Coredump.getInstance().setListener(new Coredump.Listener() {
         @Override
