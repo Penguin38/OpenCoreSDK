@@ -21,37 +21,40 @@
 #include <jni.h>
 #include <string>
 
-#define ANDROID_JNI_VERSION "1.0"
+#define ANDROID_JNI_VERSION "1.1"
 
 #ifdef __cplusplus
 namespace android {
 
-    class AndroidJNI {
-    public:
-        static std::string getVersion() { return ANDROID_JNI_VERSION; }
+class AndroidJNI {
+public:
+    static std::string getVersion() { return ANDROID_JNI_VERSION; }
 
-        static void init(JavaVM *vm) { mJavaVM = vm; }
+    static void init(JavaVM *vm) { mJavaVM = vm; }
 
-        static JavaVM *getJavaVM() { return mJavaVM; }
+    static JavaVM *getJavaVM() { return mJavaVM; }
 
-        static JNIEnv *getJNIEnv();
+    static JNIEnv *getJNIEnv();
 
-        static android_thread_id_t
-        createJavaThread(const char *name, void (*start)(void *), void *arg);
+    static android_thread_id_t
+    createJavaThread(const char *name, void (*start)(void *), void *arg);
+    static android_thread_id_t
+    createJavaThread(const char *name, void (*start)(void *), void *arg, bool canwait);
 
-    private:
-        static JavaVM *mJavaVM;
+private:
+    static JavaVM *mJavaVM;
 
-        static int javaCreateThreadEtc(
-                android_thread_func_t entryFunction,
-                void *userData,
-                const char *threadName,
-                int32_t threadPriority,
-                size_t threadStackSize,
-                android_thread_id_t *threadId);
+    static int javaCreateThreadEtc(
+            android_thread_func_t entryFunction,
+            void *userData,
+            const char *threadName,
+            int32_t threadPriority,
+            size_t threadStackSize,
+            int32_t threadCreate,
+            android_thread_id_t *threadId);
 
-        static int javaThreadShell(void *args);
-    };
+    static int javaThreadShell(void *args);
+};
 }
 #endif  // __cplusplus
 

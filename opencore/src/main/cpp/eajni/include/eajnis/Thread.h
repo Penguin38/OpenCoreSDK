@@ -39,13 +39,14 @@ enum {
 
 class Thread {
 public:
-    static int androidCreateRawThreadEtc(
-            android_thread_func_t entryFunction,
-            void *userData,
-            const char* threadName,
-            int32_t threadPriority,
-            size_t threadStackSize,
-            android_thread_id_t *threadId);
+static int androidCreateRawThreadEtc(
+        android_thread_func_t entryFunction,
+        void *userData,
+        const char* threadName,
+        int32_t threadPriority,
+        size_t threadStackSize,
+        int32_t threadCreate,
+        android_thread_id_t *threadId);
 };
 
 #endif  // __cplusplus

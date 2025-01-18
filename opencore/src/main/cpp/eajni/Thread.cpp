@@ -24,11 +24,11 @@
 typedef void* (*android_pthread_entry)(void*);
 
 int Thread::androidCreateRawThreadEtc(android_thread_func_t entryFunction, void *userData,
-                                      const char *threadName, int32_t threadPriority,
-                                      size_t threadStackSize, android_thread_id_t *threadId) {
+                                      const char *threadName, int32_t threadPriority, size_t threadStackSize,
+                                      int32_t threadCreate, android_thread_id_t *threadId) {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    pthread_attr_setdetachstate(&attr, threadCreate);
 
     if (threadStackSize) {
         pthread_attr_setstacksize(&attr, threadStackSize);
