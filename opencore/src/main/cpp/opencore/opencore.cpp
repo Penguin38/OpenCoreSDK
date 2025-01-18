@@ -314,9 +314,7 @@ void Opencore::Dump(Opencore::DumpOption* option) {
         if (need_restore_ptrace) prctl(PR_SET_PTRACER, 0);
 
         DumpCallback callback = impl->getCallback();
-        if (callback) {
-            callback(output.c_str());
-        }
+        if (callback) callback(output.c_str());
     } else {
         JNI_LOGI("Not support coredump!!");
     }
