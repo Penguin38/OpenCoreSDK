@@ -25,15 +25,22 @@ import android.util.Log;
 
 public class Coredump {
 
-    private static final String TAG = "Coredump";
+    public static final String TAG = "Coredump";
     private static final Coredump sInstance = new Coredump();
 
-    private static volatile boolean sLoaded = false;
-    private static volatile boolean sIsInit = false;
-    private static volatile boolean sReady = false;
+    private static final int NOT_READY = 0;
+    private static final int ENV_READY = 1 << 0;
+    private static final int WORK_READY =  1 << 1;
+    private static final int NATIVE_READY = 1 << 2;
+    private static volatile int sReady = NOT_READY;
+
+    private static final int STANDBY = 0;
+    private static final int COREDUMPED = 1 << 0;
+    private static final int COREDUMP_COMPLETED = 1 << 1;
+    private int mCondition = STANDBY;
+    private final Object mLock = new Object();
 
     private OpencoreHandler mCoredumpWork;
-    private final Object mLock = new Object();
     private Listener mListener;
     private JavaCrashHandler mJavaCrashHandler = new JavaCrashHandler();
 
@@ -49,7 +56,7 @@ public class Coredump {
 
     public static final int DEF_TIMEOUT = 120;
 
-    public static final int FILTER_NONE = 0x0;
+    public static final int FILTER_NONE = 0;
     public static final int FILTER_SPECIAL_VMA = 1 << 0;
     public static final int FILTER_FILE_VMA = 1 << 1;
     public static final int FILTER_SHARED_VMA = 1 << 2;
@@ -58,10 +65,13 @@ public class Coredump {
     public static final int FILTER_SIGNAL_CONTEXT = 1 << 5;
     public static final int FILTER_MINIDUMP = 1 << 6;
 
+    public static final int DEF_COMPLETE_POST_TIMEOUT = 1;
+    private long mCompletePostTimeout = DEF_COMPLETE_POST_TIMEOUT;
+
     static {
         try {
             System.loadLibrary("opencore");
-            sLoaded = true;
+            setReady(ENV_READY);
         } catch(UnsatisfiedLinkError e) {
             Log.e(TAG, "Can't load opencore-jni", e);
         }
@@ -74,22 +84,30 @@ public class Coredump {
     }
 
     public static boolean isReady() {
-        return sReady;
+        return isReady(NATIVE_READY);
+    }
+
+    private static boolean isReady(int ready) {
+        return (sReady & ready) == ready;
+    }
+
+    private static void setReady(int ready) {
+        sReady |= ready;
     }
 
     public synchronized boolean init() {
-        if (sLoaded) {
-            if (!sIsInit) {
+        if (isReady(ENV_READY)) {
+            if (!isReady(WORK_READY)) {
                 HandlerThread core = new HandlerThread("opencore-bg");
                 core.start();
                 mCoredumpWork = new OpencoreHandler(core.getLooper());
-                sReady = native_init(this);
-                sIsInit = true;
+                setReady(WORK_READY);
+                if (native_init(this)) setReady(NATIVE_READY);
             } else {
                 Log.i(TAG, "Already init opencore.");
             }
         }
-        return sIsInit;
+        return isReady();
     }
 
     public synchronized boolean enable(int type) {
@@ -124,23 +142,53 @@ public class Coredump {
         if (!isReady())
             return false;
 
+        mCondition = STANDBY;
         sendEvent(OpencoreHandler.CODE_COREDUMP, filename);
-        return waitCore();
+        return waitCore() && waitCompleted();
     }
 
     private boolean waitCore() {
-        synchronized (mLock) {
-            try {
-                mLock.wait();
-            } catch (InterruptedException e) {
-                return false;
+        try {
+            synchronized (mLock) {
+                while ((mCondition & COREDUMPED) != COREDUMPED)
+                    mLock.wait();
             }
+        } catch (InterruptedException e) {
+            return false;
         }
         return true;
     }
 
+    private boolean waitCompleted() {
+        if (mListener == null)
+            return true;
+
+        try {
+            synchronized (mLock) {
+                // only allow wait since time, opencore-cb maybe fail.
+                if ((mCondition & COREDUMP_COMPLETED) != COREDUMP_COMPLETED)
+                    mLock.wait(mCompletePostTimeout);
+            }
+        } catch (InterruptedException e) {
+            return false;
+        }
+        return true;
+    }
+
+    public void setCompletePostTimeout(long timeout) {
+        mCompletePostTimeout = timeout;
+    }
+
     private void notifyCore() {
         synchronized (mLock) {
+            mCondition |= COREDUMPED;
+            mLock.notify();
+        }
+    }
+
+    private void notifyCompleted() {
+        synchronized (mLock) {
+            mCondition |= COREDUMP_COMPLETED;
             mLock.notify();
         }
     }
@@ -193,6 +241,7 @@ public class Coredump {
             super(looper);
         }
 
+        // COREDUMP >> COREDUMP_COMPLETED
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
@@ -204,6 +253,7 @@ public class Coredump {
                             Coredump.getInstance().native_doCoredump(msg.arg1, null);
                         }
                     }
+                    // waitCore
                     Coredump.getInstance().notifyCore();
                 } break;
                 case CODE_COREDUMP_COMPLETED: {
@@ -212,6 +262,8 @@ public class Coredump {
                     } else {
                         Coredump.getInstance().onCompleted(null);
                     }
+                    // waitCompleted
+                    Coredump.getInstance().notifyCompleted();
                 } break;
             }
         }

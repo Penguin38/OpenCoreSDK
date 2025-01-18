@@ -28,6 +28,7 @@ public class TesterApp extends Application {
         Coredump.getInstance().init();
 
         Coredump.getInstance().setCoreTimeout(Coredump.DEF_TIMEOUT);
+        Coredump.getInstance().setCompletePostTimeout(Coredump.DEF_COMPLETE_POST_TIMEOUT);
 
         //Coredump.getInstance().setCoreDir(getFilesDir().getAbsolutePath());
         //Coredump.getInstance().setCoreDir("/data/local/tmp");

@@ -121,6 +121,7 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onCompleted(String path) {
+        Log.i(Coredump.TAG, path);
         Toast.makeText(MainActivity.this, path, Toast.LENGTH_LONG).show();
     }
     /**
