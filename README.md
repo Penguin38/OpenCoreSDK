@@ -30,7 +30,7 @@ dependencyResolutionManagement {
 ```
 dependencies {
     ...
-    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.4.11'
+    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.4.12'
 }
 ```
 ## Simple
@@ -56,7 +56,8 @@ dependencies {
                                       // | Coredump.FILTER_SHARED_VMA
                                        | Coredump.FILTER_SANITIZER_SHADOW_VMA
                                        | Coredump.FILTER_NON_READ_VMA
-                                       | Coredump.FILTER_SIGNAL_CONTEXT);
+                                       | Coredump.FILTER_SIGNAL_CONTEXT
+                                      /* | Coredump.FILTER_MINIDUMP */);
 
     //  setting core save dir
     Coredump.getInstance().setCoreDir(...);
@@ -67,9 +68,6 @@ dependencies {
     //  Native Crash
     Coredump.getInstance().enable(Coredump.NATIVE);
     
-    //  setting complete post timeout
-    Coredump.getInstance().setCompletePostTimeout(Coredump.DEF_COMPLETE_POST_TIMEOUT);
-
     //  setting core listener
     Coredump.getInstance().setListener(new Coredump.Listener() {
         @Override
