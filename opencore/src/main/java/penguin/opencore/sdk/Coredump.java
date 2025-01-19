@@ -28,11 +28,7 @@ public class Coredump {
     public static final String TAG = "Coredump";
     private static final Coredump sInstance = new Coredump();
 
-    private static final int NOT_READY = 0;
-    private static final int ENV_READY = 1 << 0;
-    private static final int WORK_READY =  1 << 1;
-    private static final int NATIVE_READY = 1 << 2;
-    private static volatile int sReady = NOT_READY;
+    private static volatile boolean sReady = false;
 
     private static final int STANDBY = 0;
     private static final int COREDUMPED = 1 << 0;
@@ -41,6 +37,7 @@ public class Coredump {
     private final Object mLock = new Object();
 
     private OpencoreHandler mCoredumpWork;
+    private OpencorePostHandler mCoredumpPostWork;
     private Listener mListener;
     private JavaCrashHandler mJavaCrashHandler = new JavaCrashHandler();
 
@@ -65,13 +62,9 @@ public class Coredump {
     public static final int FILTER_SIGNAL_CONTEXT = 1 << 5;
     public static final int FILTER_MINIDUMP = 1 << 6;
 
-    public static final int DEF_COMPLETE_POST_TIMEOUT = 1;
-    private long mCompletePostTimeout = DEF_COMPLETE_POST_TIMEOUT;
-
     static {
         try {
             System.loadLibrary("opencore");
-            setReady(ENV_READY);
         } catch(UnsatisfiedLinkError e) {
             Log.e(TAG, "Can't load opencore-jni", e);
         }
@@ -84,30 +77,34 @@ public class Coredump {
     }
 
     public static boolean isReady() {
-        return isReady(NATIVE_READY);
-    }
-
-    private static boolean isReady(int ready) {
-        return (sReady & ready) == ready;
-    }
-
-    private static void setReady(int ready) {
-        sReady |= ready;
+        return sReady;
     }
 
     public synchronized boolean init() {
-        if (isReady(ENV_READY)) {
-            if (!isReady(WORK_READY)) {
+        if (mCoredumpWork != null && mCoredumpPostWork != null)
+            return sReady;
+
+        try {
+            if (!native_init())
+                return false;
+
+            if (mCoredumpWork == null) {
                 HandlerThread core = new HandlerThread("opencore-bg");
                 core.start();
                 mCoredumpWork = new OpencoreHandler(core.getLooper());
-                setReady(WORK_READY);
-                if (native_init(this)) setReady(NATIVE_READY);
-            } else {
-                Log.i(TAG, "Already init opencore.");
             }
+
+            if (mCoredumpPostWork == null) {
+                HandlerThread post = new HandlerThread("opencore-post");
+                post.start();
+                mCoredumpPostWork = new OpencorePostHandler(post.getLooper());
+            }
+
+            sReady = true;
+        } catch(UnsatisfiedLinkError e) {
+            Log.e(TAG, "opencore init work fail", e);
         }
-        return isReady();
+        return sReady;
     }
 
     public synchronized boolean enable(int type) {
@@ -142,9 +139,9 @@ public class Coredump {
         if (!isReady())
             return false;
 
-        mCondition = STANDBY;
-        sendEvent(OpencoreHandler.CODE_COREDUMP, filename);
-        return waitCore() && waitCompleted();
+        mCondition &= ~COREDUMPED;
+        sendEvent(CODE_COREDUMP, filename, mCoredumpWork);
+        return waitCore();
     }
 
     private boolean waitCore() {
@@ -159,15 +156,30 @@ public class Coredump {
         return true;
     }
 
+    private void notifyCore() {
+        synchronized (mLock) {
+            mCondition |= COREDUMPED;
+            mLock.notifyAll();
+        }
+    }
+
+    private boolean doCompleted(String filename) {
+         if (mListener == null)
+            return true;
+
+        mCondition &= ~COREDUMP_COMPLETED;
+        sendEvent(CODE_COREDUMP_COMPLETED, filename, mCoredumpPostWork);
+        return waitCompleted();
+    }
+
     private boolean waitCompleted() {
         if (mListener == null)
             return true;
 
         try {
             synchronized (mLock) {
-                // only allow wait since time, opencore-cb maybe fail.
-                if ((mCondition & COREDUMP_COMPLETED) != COREDUMP_COMPLETED)
-                    mLock.wait(mCompletePostTimeout);
+                while ((mCondition & COREDUMP_COMPLETED) != COREDUMP_COMPLETED)
+                    mLock.wait();
             }
         } catch (InterruptedException e) {
             return false;
@@ -175,21 +187,10 @@ public class Coredump {
         return true;
     }
 
-    public void setCompletePostTimeout(long timeout) {
-        mCompletePostTimeout = timeout;
-    }
-
-    private void notifyCore() {
-        synchronized (mLock) {
-            mCondition |= COREDUMPED;
-            mLock.notify();
-        }
-    }
-
     private void notifyCompleted() {
         synchronized (mLock) {
             mCondition |= COREDUMP_COMPLETED;
-            mLock.notify();
+            mLock.notifyAll();
         }
     }
 
@@ -223,7 +224,7 @@ public class Coredump {
         }
     }
 
-    private static native boolean native_init(Coredump coredump);
+    private static native boolean native_init();
     public native String getVersion();
     private native boolean native_enable();
     private native boolean native_disable();
@@ -233,15 +234,14 @@ public class Coredump {
     private native void native_setCoreTimeout(int sec);
     private native void native_setCoreFilter(int filter);
 
-    private static class OpencoreHandler extends Handler {
-        public static final int CODE_COREDUMP = 1;
-        public static final int CODE_COREDUMP_COMPLETED = 2;
+    private static final int CODE_COREDUMP = 1;
+    private static final int CODE_COREDUMP_COMPLETED = 2;
 
+    private static class OpencoreHandler extends Handler {
         public OpencoreHandler(Looper looper) {
             super(looper);
         }
 
-        // COREDUMP >> COREDUMP_COMPLETED
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
@@ -256,6 +256,18 @@ public class Coredump {
                     // waitCore
                     Coredump.getInstance().notifyCore();
                 } break;
+            }
+        }
+    }
+
+    private static class OpencorePostHandler extends Handler {
+        public OpencorePostHandler(Looper looper) {
+            super(looper);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
                 case CODE_COREDUMP_COMPLETED: {
                     if (msg.obj instanceof String) {
                         Coredump.getInstance().onCompleted((String)msg.obj);
@@ -269,17 +281,13 @@ public class Coredump {
         }
     }
 
-    private void sendEvent(int code) {
-        sendEvent(code, null);
-    }
-
-    private void sendEvent(int code, String filename) {
-        Message msg = Message.obtain(mCoredumpWork, code, Process.myTid(), 0, filename);
+    private void sendEvent(int code, String filename, Handler handler) {
+        Message msg = Message.obtain(handler, code, Process.myTid(), 0, filename);
         msg.sendToTarget();
     }
 
     private static void callbackEvent(String filepath) {
-        Coredump.getInstance().sendEvent(OpencoreHandler.CODE_COREDUMP_COMPLETED, filepath);
+        Coredump.getInstance().doCompleted(filepath);
     }
 
     public static interface Listener {

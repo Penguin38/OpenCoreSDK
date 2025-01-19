@@ -143,7 +143,7 @@ static JNINativeMethod gMethods[] = {
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_penguin_opencore_sdk_Coredump_native_1init(JNIEnv *env, jclass clazz, jobject object) {
+Java_penguin_opencore_sdk_Coredump_native_1init(JNIEnv *env, jclass clazz/*, jobject object*/) {
     gUser.gCoredump = (jclass)env->NewGlobalRef(clazz);
     if (env->RegisterNatives(gUser.gCoredump, gMethods, sizeof(gMethods) / sizeof(gMethods[0])) < 0) {
         JNI_LOGE("Init native environment fail.");
