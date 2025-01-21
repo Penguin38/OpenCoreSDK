@@ -130,11 +130,12 @@ void OpencoreImpl::CreateCoreAUXV(int pid) {
 void OpencoreImpl::SpecialCoreFilter() {
     for (int index = 0; index < maps.size(); ++index) {
         Opencore::VirtualMemoryArea& vma = maps[index];
-        if (IsFilterSegment(vma))
+        int vma_flag = IsFilterSegment(vma) | IsSpecialFilterSegment(vma);
+        if (vma_flag & VMA_NULL)
             phdr[index].p_filesz = 0x0;
 
-        if (IsSpecialFilterSegment(vma, index))
-            phdr[index].p_filesz = 0x0;
+        if (vma_flag & VMA_INCLUDE)
+            phdr[index].p_filesz = phdr[index].p_memsz;
     }
 }
 
@@ -318,29 +319,29 @@ bool OpencoreImpl::DoCoredump(const char* filename) {
     return true;
 }
 
-bool OpencoreImpl::NeedFilterFile(Opencore::VirtualMemoryArea& vma) {
+int OpencoreImpl::NeedFilterFile(Opencore::VirtualMemoryArea& vma) {
     struct stat sb;
     int fd = open(vma.file.c_str(), O_RDONLY);
     if (fd < 0)
-        return true;
+        return VMA_NULL;
 
     if (fstat(fd, &sb) < 0) {
         close(fd);
-        return true;
+        return VMA_NULL;
     }
 
     char* mem = (char *)mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0x0);
     close(fd);
     if (mem == MAP_FAILED)
-        return true;
+        return VMA_NULL;
 
     Elf32_Ehdr* ehdr = (Elf32_Ehdr*)mem;
     if (strncmp(mem, ELFMAG, 4) || ehdr->e_machine != getMachine()) {
         munmap(mem, sb.st_size);
-        return true;
+        return VMA_NULL;
     }
 
-    bool ret = true;
+    int ret = VMA_NULL;
     Elf32_Phdr* phdr = (Elf32_Phdr *)(mem + ehdr->e_phoff);
     for (int index = 0; index < ehdr->e_phnum; index++) {
         if (phdr[index].p_type != PT_LOAD)
@@ -350,7 +351,7 @@ bool OpencoreImpl::NeedFilterFile(Opencore::VirtualMemoryArea& vma) {
         int end = pos + phdr[index].p_memsz;
         if (pos <= vma.offset && vma.offset < end) {
             if ((phdr[index].p_flags & PF_W))
-                ret = false;
+                ret = VMA_NORMAL;
         }
     }
 

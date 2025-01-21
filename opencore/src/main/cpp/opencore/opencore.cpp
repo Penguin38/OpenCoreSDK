@@ -344,7 +344,7 @@ void Opencore::Finish() {
     setSignalInfo(nullptr);
 }
 
-bool Opencore::IsFilterSegment(Opencore::VirtualMemoryArea& vma) {
+int Opencore::IsFilterSegment(Opencore::VirtualMemoryArea& vma) {
     int filter = getFilter();
     if (filter & FILTER_SPECIAL_VMA) {
         if (vma.file == "/dev/binderfs/hwbinder"
@@ -352,7 +352,7 @@ bool Opencore::IsFilterSegment(Opencore::VirtualMemoryArea& vma) {
                 || vma.file == "[vvar]"
                 || vma.file == "/dev/mali0"
            ) {
-            return true;
+            return VMA_NULL;
         }
     }
 
@@ -363,21 +363,21 @@ bool Opencore::IsFilterSegment(Opencore::VirtualMemoryArea& vma) {
 
     if (filter & FILTER_SHARED_VMA) {
         if (vma.flags[3] == 's' || vma.flags[3] == 'S')
-            return true;
+            return VMA_NULL;
     }
 
     if (filter & FILTER_SANITIZER_SHADOW_VMA) {
         if (vma.file == "[anon:low shadow]"
                 || vma.file == "[anon:high shadow]"
                 || (vma.file.compare(0, 12, "[anon:hwasan") == 0))
-            return true;
+            return VMA_NULL;
     }
 
     if (filter & FILTER_NON_READ_VMA) {
         if (vma.flags[0] == '-' && vma.flags[1] == '-' && vma.flags[2] == '-')
-            return true;
+            return VMA_NULL;
     }
-    return false;
+    return VMA_NORMAL;
 }
 
 void Opencore::StopTheWorld(int pid) {
