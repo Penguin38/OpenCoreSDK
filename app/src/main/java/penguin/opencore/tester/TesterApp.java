@@ -17,7 +17,7 @@
 package penguin.opencore.tester;
 
 import android.app.Application;
-
+import android.util.Log;
 import penguin.opencore.sdk.Coredump;
 
 public class TesterApp extends Application {
@@ -35,8 +35,8 @@ public class TesterApp extends Application {
         Coredump.getInstance().setCoreFlag(Coredump.FLAG_CORE
                                          | Coredump.FLAG_PROCESS_COMM
                                          | Coredump.FLAG_PID
-                                         | Coredump.FLAG_THREAD_COMM
-                                         | Coredump.FLAG_TID
+                                        // | Coredump.FLAG_THREAD_COMM
+                                        // | Coredump.FLAG_TID
                                          | Coredump.FLAG_TIMESTAMP);
 
         Coredump.getInstance().setCoreFilter(Coredump.FILTER_SPECIAL_VMA
@@ -49,5 +49,7 @@ public class TesterApp extends Application {
 
         Coredump.getInstance().enable(Coredump.JAVA);
         Coredump.getInstance().enable(Coredump.NATIVE);
+
+        Log.i(Coredump.TAG, Coredump.getInstance().toString());
     }
 }

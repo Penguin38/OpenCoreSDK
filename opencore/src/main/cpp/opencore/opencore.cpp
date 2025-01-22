@@ -161,6 +161,43 @@ void Opencore::TimeoutHandle(int) {
     _exit(0);
 }
 
+bool Opencore::GetState() {
+    Opencore* impl = GetInstance();
+    if (impl)
+        return impl->getState();
+    return false;
+}
+
+const char* Opencore::GetDir() {
+    Opencore* impl = GetInstance();
+    if (impl) {
+        std::string& dir = impl->getDir();
+        return dir.c_str();
+    }
+    return "";
+}
+
+int Opencore::GetFlag() {
+    Opencore* impl = GetInstance();
+    if (impl)
+        return impl->getFlag();
+    return 0;
+}
+
+int Opencore::GetTimeout() {
+    Opencore* impl = GetInstance();
+    if (impl)
+        return impl->getTimeout();
+    return DEF_TIMEOUT;
+}
+
+int Opencore::GetFilter() {
+    Opencore* impl = GetInstance();
+    if (impl)
+        return impl->getFilter();
+    return FILTER_NONE;
+}
+
 void Opencore::Dump(const char* filename) {
     Opencore::DumpOption option;
     option.filename = const_cast<char *>(filename);

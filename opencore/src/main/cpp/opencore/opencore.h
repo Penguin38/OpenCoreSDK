@@ -180,6 +180,11 @@ public:
     static void SetTimeout(int sec);
     static void SetFilter(int filter);
     static void TimeoutHandle(int);
+    static bool GetState();
+    static const char* GetDir();
+    static int GetFlag();
+    static int GetTimeout();
+    static int GetFilter();
 protected:
     int extra_note_filesz;
     std::vector<int> pids;

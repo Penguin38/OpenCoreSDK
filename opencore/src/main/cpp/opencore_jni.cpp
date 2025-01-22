@@ -53,19 +53,19 @@ static void penguin_opencore_sdk_coredump_callback(const char* filepath) {
     if (thread) pthread_join(thread, NULL);
 }
 
-static jstring penguin_opencore_sdk_Coredump_getVersion(JNIEnv *env, jobject /*thiz*/) {
+static jstring penguin_opencore_sdk_Coredump_nativeVersion(JNIEnv* env, jclass /*clazz*/) {
     return env->NewStringUTF(Opencore::GetVersion());
 }
 
-static jboolean penguin_opencore_sdk_Coredump_native_enable(JNIEnv *env, jobject /*thiz*/) {
+static jboolean penguin_opencore_sdk_Coredump_nativeEnable(JNIEnv* /*env*/, jclass /*clazz*/) {
     return Opencore::Enable();
 }
 
-static jboolean penguin_opencore_sdk_Coredump_native_disable(JNIEnv *env, jobject /*thiz*/) {
+static jboolean penguin_opencore_sdk_Coredump_nativeDisable(JNIEnv* /*env*/, jclass /*clazz*/) {
     return Opencore::Disable();
 }
 
-static jboolean penguin_opencore_sdk_Coredump_native_doCoredump(JNIEnv *env, jobject /*thiz*/, jint tid, jstring filename) {
+static jboolean penguin_opencore_sdk_Coredump_nativeCoredump(JNIEnv* env, jclass /*clazz*/, jint tid, jstring filename) {
     jboolean isCopy;
     if (filename != NULL) {
         const char *cstr = env->GetStringUTFChars(filename, &isCopy);
@@ -77,7 +77,7 @@ static jboolean penguin_opencore_sdk_Coredump_native_doCoredump(JNIEnv *env, job
     return true;
 }
 
-static void penguin_opencore_sdk_Coredump_native_setCoreDir(JNIEnv *env, jobject /*thiz*/, jstring dir) {
+static void penguin_opencore_sdk_Coredump_nativeSetDir(JNIEnv* env, jclass /*clazz*/, jstring dir) {
     jboolean isCopy;
     if (dir != NULL) {
         const char *cstr = env->GetStringUTFChars(dir, &isCopy);
@@ -86,64 +86,110 @@ static void penguin_opencore_sdk_Coredump_native_setCoreDir(JNIEnv *env, jobject
     }
 }
 
-static void penguin_opencore_sdk_Coredump_native_setCoreFlag(JNIEnv *env, jobject /*thiz*/, jint flag) {
+static void penguin_opencore_sdk_Coredump_nativeSetFlag(JNIEnv* /*env*/, jclass /*clazz*/, jint flag) {
     Opencore::SetFlag(flag);
 }
 
-static void penguin_opencore_sdk_Coredump_native_setCoreTimeout(JNIEnv *env, jobject /*thiz*/, jint sec) {
+static void penguin_opencore_sdk_Coredump_nativeSetTimeout(JNIEnv* /*env*/, jclass /*clazz*/, jint sec) {
     Opencore::SetTimeout(sec);
 }
 
-static void penguin_opencore_sdk_Coredump_native_setCoreFilter(JNIEnv *env, jobject /*thiz*/, jint filter) {
+static void penguin_opencore_sdk_Coredump_nativeSetFilter(JNIEnv* /*env*/, jclass /*clazz*/, jint filter) {
     Opencore::SetFilter(filter);
+}
+
+static jboolean penguin_opencore_sdk_Coredump_nativeIsEnabled(JNIEnv* /*env*/, jclass /*clazz*/) {
+    return Opencore::GetState();
+}
+
+static jstring penguin_opencore_sdk_Coredump_nativeGetDir(JNIEnv* env, jclass /*clazz*/) {
+    const char* dir = Opencore::GetDir();
+    return env->NewStringUTF(dir);
+}
+
+static jint penguin_opencore_sdk_Coredump_nativeGetFlag(JNIEnv* /*env*/, jclass /*clazz*/) {
+    return Opencore::GetFlag();
+}
+
+static jint penguin_opencore_sdk_Coredump_nativeGetTimeout(JNIEnv* /*env*/, jclass /*clazz*/) {
+    return Opencore::GetTimeout();
+}
+
+static jint penguin_opencore_sdk_Coredump_nativeGetFilter(JNIEnv* /*env*/, jclass /*clazz*/) {
+    return Opencore::GetFilter();
 }
 
 static JNINativeMethod gMethods[] = {
     {
-        "getVersion",
+        "nativeVersion",
         "()Ljava/lang/String;",
-        (void *)penguin_opencore_sdk_Coredump_getVersion
+        (void *)penguin_opencore_sdk_Coredump_nativeVersion
     },
     {
-        "native_enable",
+        "nativeEnable",
         "()Z",
-        (void *)penguin_opencore_sdk_Coredump_native_enable
+        (void *)penguin_opencore_sdk_Coredump_nativeEnable
     },
     {
-        "native_disable",
+        "nativeDisable",
         "()Z",
-        (void *)penguin_opencore_sdk_Coredump_native_disable
+        (void *)penguin_opencore_sdk_Coredump_nativeDisable
     },
     {
-        "native_doCoredump",
+        "nativeCoredump",
         "(ILjava/lang/String;)Z",
-        (void *)penguin_opencore_sdk_Coredump_native_doCoredump
+        (void *)penguin_opencore_sdk_Coredump_nativeCoredump
     },
     {
-        "native_setCoreDir",
+        "nativeSetDir",
         "(Ljava/lang/String;)V",
-        (void *)penguin_opencore_sdk_Coredump_native_setCoreDir
+        (void *)penguin_opencore_sdk_Coredump_nativeSetDir
     },
     {
-        "native_setCoreFlag",
+        "nativeSetFlag",
         "(I)V",
-        (void *)penguin_opencore_sdk_Coredump_native_setCoreFlag
+        (void *)penguin_opencore_sdk_Coredump_nativeSetFlag
     },
     {
-        "native_setCoreTimeout",
+        "nativeSetTimeout",
         "(I)V",
-        (void *)penguin_opencore_sdk_Coredump_native_setCoreTimeout
+        (void *)penguin_opencore_sdk_Coredump_nativeSetTimeout
     },
     {
-        "native_setCoreFilter",
+        "nativeSetFilter",
         "(I)V",
-        (void *)penguin_opencore_sdk_Coredump_native_setCoreFilter
+        (void *)penguin_opencore_sdk_Coredump_nativeSetFilter
+    },
+    {
+        "nativeIsEnabled",
+        "()Z",
+        (void *)penguin_opencore_sdk_Coredump_nativeIsEnabled
+    },
+    {
+        "nativeGetDir",
+        "()Ljava/lang/String;",
+        (void *)penguin_opencore_sdk_Coredump_nativeGetDir
+    },
+    {
+        "nativeGetFlag",
+        "()I",
+        (void *)penguin_opencore_sdk_Coredump_nativeGetFlag
+    },
+    {
+        "nativeGetTimeout",
+        "()I",
+        (void *)penguin_opencore_sdk_Coredump_nativeGetTimeout
+    },
+    {
+        "nativeGetFilter",
+        "()I",
+        (void *)penguin_opencore_sdk_Coredump_nativeGetFilter
     },
 };
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_penguin_opencore_sdk_Coredump_native_1init(JNIEnv *env, jclass clazz/*, jobject object*/) {
+Java_penguin_opencore_sdk_Coredump_nativeInit(JNIEnv* env, jclass clazz) {
     gUser.gCoredump = (jclass)env->NewGlobalRef(clazz);
     if (env->RegisterNatives(gUser.gCoredump, gMethods, sizeof(gMethods) / sizeof(gMethods[0])) < 0) {
         JNI_LOGE("Init native environment fail.");

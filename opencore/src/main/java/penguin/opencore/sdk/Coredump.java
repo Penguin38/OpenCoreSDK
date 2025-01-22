@@ -66,13 +66,13 @@ public class Coredump {
         try {
             System.loadLibrary("opencore");
         } catch(UnsatisfiedLinkError e) {
-            Log.e(TAG, "Can't load opencore-jni", e);
+            Log.e(TAG, "Cannot load opencore library", e);
         }
     }
 
     private Coredump() {}
 
-    public static synchronized Coredump getInstance() {
+    public static Coredump getInstance() {
         return sInstance;
     }
 
@@ -85,7 +85,7 @@ public class Coredump {
             return sReady;
 
         try {
-            if (!native_init())
+            if (!nativeInit())
                 return false;
 
             if (mCoredumpWork == null) {
@@ -113,7 +113,7 @@ public class Coredump {
                 case JAVA:
                     return mJavaCrashHandler.enableJavaCrash();
                 case NATIVE:
-                    return native_enable();
+                    return nativeEnable();
             }
         }
         return false;
@@ -125,7 +125,19 @@ public class Coredump {
                 case JAVA:
                     return mJavaCrashHandler.disableJavaCrash();
                 case NATIVE:
-                    return native_disable();
+                    return nativeDisable();
+            }
+        }
+        return false;
+    }
+
+    public synchronized boolean isEnabled(int type) {
+        if (isReady()) {
+            switch (type) {
+                case JAVA:
+                    return mJavaCrashHandler.isEnabled();
+                case NATIVE:
+                    return nativeIsEnabled();
             }
         }
         return false;
@@ -173,9 +185,6 @@ public class Coredump {
     }
 
     private boolean waitCompleted() {
-        if (mListener == null)
-            return true;
-
         try {
             synchronized (mLock) {
                 while ((mCondition & COREDUMP_COMPLETED) != COREDUMP_COMPLETED)
@@ -202,37 +211,76 @@ public class Coredump {
 
     public void setCoreDir(String dir) {
         if (isReady() && dir != null) {
-            native_setCoreDir(dir);
+            nativeSetDir(dir);
         }
     }
 
     public void setCoreFlag(int flag) {
         if (isReady()) {
-            native_setCoreFlag(flag);
+            nativeSetFlag(flag);
         }
     }
 
     public void setCoreTimeout(int sec) {
         if (isReady()) {
-            native_setCoreTimeout(sec);
+            nativeSetTimeout(sec);
         }
     }
 
     public void setCoreFilter(int filter) {
         if (isReady()) {
-            native_setCoreFilter(filter);
+            nativeSetFilter(filter);
         }
     }
 
-    private static native boolean native_init();
-    public native String getVersion();
-    private native boolean native_enable();
-    private native boolean native_disable();
-    private native boolean native_doCoredump(int tid, String filename);
-    private native void native_setCoreDir(String dir);
-    private native void native_setCoreFlag(int flag);
-    private native void native_setCoreTimeout(int sec);
-    private native void native_setCoreFilter(int filter);
+    public String getCoreDir() {
+        if (isReady()) {
+            return nativeGetDir();
+        }
+        return "";
+    }
+
+    public int getCoreFlag() {
+        if (isReady()) {
+            return nativeGetFlag();
+        }
+        return 0;
+    }
+
+    public int getCoreTimeout() {
+        if (isReady()) {
+            return nativeGetTimeout();
+        }
+        return DEF_TIMEOUT;
+    }
+
+    public int getCoreFilter() {
+        if (isReady()) {
+            return nativeGetFilter();
+        }
+        return FILTER_NONE;
+    }
+
+    public String getVersion() {
+        if (isReady())
+            return nativeVersion();
+        return "unknown";
+    }
+
+    private static native boolean nativeInit();
+    private static native String nativeVersion();
+    private static native boolean nativeEnable();
+    private static native boolean nativeDisable();
+    private static native boolean nativeCoredump(int tid, String filename);
+    private static native void nativeSetDir(String dir);
+    private static native void nativeSetFlag(int flag);
+    private static native void nativeSetTimeout(int sec);
+    private static native void nativeSetFilter(int filter);
+    private static native boolean nativeIsEnabled();
+    private static native String nativeGetDir();
+    private static native int nativeGetFlag();
+    private static native int nativeGetTimeout();
+    private static native int nativeGetFilter();
 
     private static final int CODE_COREDUMP = 1;
     private static final int CODE_COREDUMP_COMPLETED = 2;
@@ -248,9 +296,9 @@ public class Coredump {
                 case CODE_COREDUMP: {
                     if (isReady()) {
                         if (msg.obj instanceof String) {
-                            Coredump.getInstance().native_doCoredump(msg.arg1, (String)msg.obj);
+                            Coredump.getInstance().nativeCoredump(msg.arg1, (String)msg.obj);
                         } else {
-                            Coredump.getInstance().native_doCoredump(msg.arg1, null);
+                            Coredump.getInstance().nativeCoredump(msg.arg1, null);
                         }
                     }
                     // waitCore
@@ -316,6 +364,10 @@ public class Coredump {
             return true;
         }
 
+        public boolean isEnabled() {
+            return this == Thread.getDefaultUncaughtExceptionHandler();
+        }
+
         @Override
         public void uncaughtException(Thread thread, Throwable throwable) {
             try {
@@ -326,5 +378,136 @@ public class Coredump {
                 System.exit(10);
             }
         }
+    }
+
+    public static String coreFlagToString(int flag) {
+        StringBuilder sb = new StringBuilder();
+        if (flag == 0) {
+            sb.append("FLAG_NONE");
+            return sb.toString();
+        }
+
+        boolean need_seq = false;
+        if ((flag & FLAG_CORE) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FLAG_CORE");
+            need_seq = true;
+        }
+
+        if ((flag & FLAG_PROCESS_COMM) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FLAG_PROCESS_COMM");
+            need_seq = true;
+        }
+
+        if ((flag & FLAG_PID) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FLAG_PID");
+            need_seq = true;
+        }
+
+        if ((flag & FLAG_THREAD_COMM) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FLAG_THREAD_COMM");
+            need_seq = true;
+        }
+
+        if ((flag & FLAG_TID) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FLAG_TID");
+            need_seq = true;
+        }
+
+        if ((flag & FLAG_TIMESTAMP) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FLAG_TIMESTAMP");
+            need_seq = true;
+        }
+        return sb.toString();
+    }
+
+    public static String coreFilterToString(int filter) {
+        StringBuilder sb = new StringBuilder();
+        if (filter == 0) {
+            sb.append("FILTER_NONE");
+            return sb.toString();
+        }
+
+        boolean need_seq = false;
+        if ((filter & FILTER_SPECIAL_VMA) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FILTER_SPECIAL_VMA");
+            need_seq = true;
+        }
+
+        if ((filter & FILTER_FILE_VMA) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FILTER_FILE_VMA");
+            need_seq = true;
+        }
+
+        if ((filter & FILTER_SHARED_VMA) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FILTER_SHARED_VMA");
+            need_seq = true;
+        }
+
+        if ((filter & FILTER_SANITIZER_SHADOW_VMA) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FILTER_SANITIZER_SHADOW_VMA");
+            need_seq = true;
+        }
+
+        if ((filter & FILTER_NON_READ_VMA) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FLAG_TID");
+            need_seq = true;
+        }
+
+        if ((filter & FILTER_SIGNAL_CONTEXT) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FILTER_SIGNAL_CONTEXT");
+            need_seq = true;
+        }
+
+        if ((filter & FILTER_MINIDUMP) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FILTER_MINIDUMP");
+            need_seq = true;
+        }
+        return sb.toString();
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Coredump[");
+        if (!isReady()) {
+            sb.append("NOT READY!!]");
+            return sb.toString();
+        }
+
+        sb.append(nativeVersion());
+
+        sb.append(",");
+        sb.append(nativeGetDir());
+
+        sb.append(",");
+        sb.append(coreFlagToString(nativeGetFlag()));
+
+        sb.append(",");
+        sb.append(coreFilterToString(nativeGetFilter()));
+
+        sb.append(",");
+        sb.append(mJavaCrashHandler.isEnabled());
+
+        sb.append(",");
+        sb.append(nativeIsEnabled());
+
+        sb.append(",");
+        sb.append(nativeGetTimeout());
+
+        sb.append("]");
+        return sb.toString();
     }
 }
