@@ -20,7 +20,6 @@
 
 #include <pthread.h>
 #include <assert.h>
-#include <android/binder_ibinder.h>
 
 namespace android {
 JavaVM *AndroidJNI::mJavaVM = NULL;

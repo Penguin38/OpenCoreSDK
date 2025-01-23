@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef APENGUIN_ANDROIDJNI_H
-#define APENGUIN_ANDROIDJNI_H
+#ifndef EAJNI_ANDROIDJNI_H
+#define EAJNI_ANDROIDJNI_H
 
 #include <eajnis/Thread.h>
 #include <jni.h>
@@ -58,4 +58,4 @@ private:
 }
 #endif  // __cplusplus
 
-#endif //APENGUIN_ANDROIDJNI_H
+#endif //EAJNI_ANDROIDJNI_H

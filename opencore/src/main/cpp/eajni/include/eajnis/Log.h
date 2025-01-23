@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef APENGUIN_LOG_H
-#define APENGUIN_LOG_H
+#ifndef EAJNI_LOG_H
+#define EAJNI_LOG_H
 
 #include <android/log.h>
 
 #ifndef LOG_TAG
-#define LOG_TAG "APenguin-JNI"
+#define LOG_TAG "JNI"
 #endif
 
 #ifdef __cplusplus
@@ -38,4 +38,4 @@ extern "C" {
 }
 #endif //__cplusplus
 
-#endif //APENGUIN_LOG_H
+#endif //EAJNI_LOG_H

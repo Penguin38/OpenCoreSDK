@@ -18,7 +18,6 @@
 #include <eajnis/Log.h>
 
 #include <pthread.h>
-#include <string>
 #include <errno.h>
 
 typedef void* (*android_pthread_entry)(void*);

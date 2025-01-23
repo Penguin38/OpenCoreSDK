@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef APENGUIN_THREAD_H
-#define APENGUIN_THREAD_H
+#ifndef EAJNI_THREAD_H
+#define EAJNI_THREAD_H
 
 #include <sys/types.h>
 
@@ -51,4 +51,4 @@ static int androidCreateRawThreadEtc(
 
 #endif  // __cplusplus
 
-#endif //APENGUIN_THREAD_H
+#endif //EAJNI_THREAD_H
