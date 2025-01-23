@@ -99,7 +99,7 @@ static void penguin_opencore_sdk_Coredump_nativeSetFilter(JNIEnv* /*env*/, jclas
 }
 
 static jboolean penguin_opencore_sdk_Coredump_nativeIsEnabled(JNIEnv* /*env*/, jclass /*clazz*/) {
-    return Opencore::GetState();
+    return Opencore::IsEnabled();
 }
 
 static jstring penguin_opencore_sdk_Coredump_nativeGetDir(JNIEnv* env, jclass /*clazz*/) {

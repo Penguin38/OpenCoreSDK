@@ -81,8 +81,6 @@ public:
     static constexpr int VMA_INCLUDE = 1 << 1;
 
     /** only opencore-sdk append **/
-    static constexpr int STATE_ON = 1;
-    static constexpr int STATE_OFF = 0;
     static constexpr int DEF_TIMEOUT = 120;
 
     Opencore() {
@@ -101,7 +99,6 @@ public:
         /** only opencore-sdk append **/
         ucontext_raw = nullptr;
         siginfo = nullptr;
-        state = STATE_OFF;
         timeout = DEF_TIMEOUT;
     }
 
@@ -142,9 +139,7 @@ public:
     void setTimeout(int sec) { timeout = sec; }
     void setContext(void *raw) { ucontext_raw = raw; }
     void setSignalInfo(void* info) { siginfo = info; }
-    void setState(int s) { state = s; }
     void setCallback(DumpCallback callback) { cb = callback; }
-    bool getState() { return state == STATE_ON; }
     int getTimeout() { return timeout; }
     void* getContext() { return ucontext_raw; }
     void* getSignalInfo() { return siginfo; }
@@ -173,6 +168,7 @@ public:
     static void Dump(DumpOption* option);
     static bool Enable();
     static bool Disable();
+    static bool IsEnabled();
     static void IgnoreHandler();
     static void SetDir(const char* dir);
     static void SetCallback(DumpCallback cb);
@@ -205,7 +201,6 @@ private:
 
     /** only opencore-sdk append **/
     DumpCallback cb;
-    int state;
     int timeout;
 };
 

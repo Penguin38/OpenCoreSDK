@@ -54,7 +54,12 @@ Opencore* Opencore::GetInstance() {
 
 static pthread_mutex_t g_handle_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t g_switch_lock = PTHREAD_MUTEX_INITIALIZER;
-static struct sigaction g_restore_action[5] = {0};
+static constexpr int kExceptionSignals[] = {
+    SIGSEGV, SIGABRT, SIGFPE, SIGILL, SIGBUS, SIGTRAP
+};
+static constexpr int kNumHandledSignals = sizeof(kExceptionSignals) / sizeof(kExceptionSignals[0]);
+static struct sigaction g_restore_action[kNumHandledSignals] = {0};
+static bool handlers_installed = false;
 
 void Opencore::HandleSignal(int signal, siginfo_t* siginfo, void* ucontext_raw) {
     pthread_mutex_lock(&g_handle_lock);
@@ -65,51 +70,62 @@ void Opencore::HandleSignal(int signal, siginfo_t* siginfo, void* ucontext_raw) 
 }
 
 bool Opencore::Enable() {
-    Opencore* impl = GetInstance();
-    if (impl) {
-        pthread_mutex_lock(&g_switch_lock);
-        if (impl->getState() != STATE_ON) {
-            struct sigaction stact;
-            struct sigaction oldact[5];
-            memset(&stact, 0, sizeof(stact));
-            stact.sa_sigaction = Opencore::HandleSignal;
-            stact.sa_flags = SA_RESTART | SA_SIGINFO | SA_ONSTACK;
-
-            sigaction(SIGSEGV, &stact, &oldact[0]);
-            sigaction(SIGABRT, &stact, &oldact[1]);
-            sigaction(SIGBUS, &stact, &oldact[2]);
-            sigaction(SIGILL, &stact, &oldact[3]);
-            sigaction(SIGFPE, &stact, &oldact[4]);
-
-            for (int index = 0; index < 5; index++) {
-                if (oldact[index].sa_sigaction != Opencore::HandleSignal) {
-                    memcpy(&g_restore_action[index], &oldact[index], sizeof(struct sigaction));
-                }
-            }
-            impl->setState(STATE_ON);
-        }
+    pthread_mutex_lock(&g_switch_lock);
+    if (handlers_installed) {
+        JNI_LOGW("opencore native handlers already installed.");
         pthread_mutex_unlock(&g_switch_lock);
-        return true;
+        return false;
     }
-    return false;
+
+    for (int i = 0; i < kNumHandledSignals; ++i) {
+        if (sigaction(kExceptionSignals[i], NULL, &g_restore_action[i]) == -1) {
+            JNI_LOGE("signal %d unable to store old handler", kExceptionSignals[i]);
+            pthread_mutex_unlock(&g_switch_lock);
+            return false;
+        }
+    }
+
+    struct sigaction stact;
+    memset(&stact, 0, sizeof(stact));
+    sigemptyset(&stact.sa_mask);
+
+    for (int i = 0; i < kNumHandledSignals; ++i)
+        sigaddset(&stact.sa_mask, kExceptionSignals[i]);
+
+    stact.sa_sigaction = Opencore::HandleSignal;
+    stact.sa_flags = SA_RESTART | SA_SIGINFO | SA_ONSTACK;
+
+    for (int i = 0; i < kNumHandledSignals; i++)
+        sigaction(kExceptionSignals[i], &stact, NULL);
+
+    handlers_installed = true;
+    pthread_mutex_unlock(&g_switch_lock);
+    return true;
 }
 
 bool Opencore::Disable() {
-    Opencore* impl = Opencore::GetInstance();
-    if (impl) {
-        pthread_mutex_lock(&g_switch_lock);
-        if (impl->getState() != STATE_OFF) {
-            sigaction(SIGSEGV, &g_restore_action[0], NULL);
-            sigaction(SIGABRT, &g_restore_action[1], NULL);
-            sigaction(SIGBUS, &g_restore_action[2], NULL);
-            sigaction(SIGILL, &g_restore_action[3], NULL);
-            sigaction(SIGFPE, &g_restore_action[4], NULL);
-            impl->setState(STATE_OFF);
-        }
+    pthread_mutex_lock(&g_switch_lock);
+    if (!handlers_installed) {
+        JNI_LOGW("opencore native handlers already uninstalled.");
         pthread_mutex_unlock(&g_switch_lock);
-        return true;
+        return false;
     }
-    return false;
+
+    for (int i = 0; i < kNumHandledSignals; i++)
+        sigaction(kExceptionSignals[i], &g_restore_action[i], NULL);
+
+    memset(&g_restore_action, 0, sizeof(g_restore_action));
+    handlers_installed = false;
+    pthread_mutex_unlock(&g_switch_lock);
+    return true;
+}
+
+bool Opencore::IsEnabled() {
+    bool installed = false;
+    pthread_mutex_lock(&g_switch_lock);
+    installed = handlers_installed;
+    pthread_mutex_unlock(&g_switch_lock);
+    return installed;
 }
 
 void Opencore::IgnoreHandler() {
@@ -121,11 +137,8 @@ void Opencore::IgnoreHandler() {
     sigaction(SIGCHLD, &stact, NULL);
 
     // ignore opencore signal handler
-    sigaction(SIGSEGV, &stact, NULL);
-    sigaction(SIGABRT, &stact, NULL);
-    sigaction(SIGBUS, &stact, NULL);
-    sigaction(SIGILL, &stact, NULL);
-    sigaction(SIGFPE, &stact, NULL);
+    for (int i = 0; i < kNumHandledSignals; i++)
+        sigaction(kExceptionSignals[i], &stact, NULL);
 }
 
 void Opencore::SetDir(const char *dir) {
@@ -159,13 +172,6 @@ void Opencore::TimeoutHandle(int) {
     Opencore* impl = GetInstance();
     if (impl) impl->Finish();
     _exit(0);
-}
-
-bool Opencore::GetState() {
-    Opencore* impl = GetInstance();
-    if (impl)
-        return impl->getState();
-    return false;
 }
 
 const char* Opencore::GetDir() {
