@@ -442,11 +442,18 @@ void Opencore::StopTheWorld(int pid) {
 }
 
 bool Opencore::StopTheThread(int tid) {
-    pids.push_back(tid);
+    ThreadRecord ts = {
+        .pid = tid,
+        .attached = false,
+    };
     if (ptrace(PTRACE_ATTACH, tid, NULL, 0) < 0) {
-        JNI_LOGW("%s %d: %s", __func__ , tid, strerror(errno));
+        threads.push_back(ts);
         return false;
     }
+
+    ts.attached = true;
+    threads.push_back(ts);
+
     int status = 0;
     int result = waitpid(tid, &status, WUNTRACED | __WALL);
     if (result != tid) {
@@ -467,14 +474,16 @@ bool Opencore::StopTheThread(int tid) {
 }
 
 void Opencore::Continue() {
-    for (int index = 0; index < pids.size(); index++) {
-        pid_t tid = pids[index];
-        if (ptrace(PTRACE_DETACH, tid, NULL, 0) < 0) {
-            JNI_LOGV("%s %d: %s", __func__ , tid, strerror(errno));
+    for (int index = 0; index < threads.size(); index++) {
+        ThreadRecord& ts = threads[index];
+        if (!ts.attached)
             continue;
-        }
+
+        pid_t tid = ts.pid;
+        if (ptrace(PTRACE_DETACH, tid, NULL, 0) < 0)
+            continue;
     }
-    pids.clear();
+    threads.clear();
 }
 
 void Opencore::ParseMaps(int pid, std::vector<VirtualMemoryArea>& maps) {
