@@ -207,3 +207,29 @@ JNI_OnLoad(JavaVM *vm, void * /*reserved*/) {
     android::AndroidJNI::init(vm);
     return JNI_VERSION_1_4;
 }
+
+// #define INJECT_OPENCORE_DIR "/sdcard/Android/data/penguin.opencore.sdk/files"
+/*
+ * build inject version if define macro "INJECT_OPENCORE_DIR" topath save dir.
+ * exp:
+ *     #define INJECT_OPENCORE_DIR "/sdcard/Android/data/penguin.opencore.sdk/files"
+ * core-parser> remote hook --inject -l libopencore.so
+ * it will inject target process to enable opencore native crash handler.
+ */
+#if defined(INJECT_OPENCORE_DIR)
+extern "C"
+void __attribute__((constructor)) opencore_ctor_init() {
+    Opencore::SetDir(INJECT_OPENCORE_DIR);
+    Opencore::SetTimeout(180);
+    Opencore::SetFlag(Opencore::FLAG_CORE
+                    | Opencore::FLAG_PROCESS_COMM
+                    | Opencore::FLAG_PID
+                    | Opencore::FLAG_TIMESTAMP);
+    Opencore::SetFilter(Opencore::FILTER_SPECIAL_VMA
+                      | Opencore::FILTER_SANITIZER_SHADOW_VMA
+                      | Opencore::FILTER_NON_READ_VMA
+                      | Opencore::FILTER_SIGNAL_CONTEXT);
+    Opencore::Enable();
+    JNI_LOGI("Init inject %s environment..", Opencore::GetVersion());
+}
+#endif
