@@ -111,7 +111,7 @@ public class Coredump {
         if (isReady()) {
             switch (type) {
                 case JAVA:
-                    return mJavaCrashHandler.enableJavaCrash();
+                    return mJavaCrashHandler.enable();
                 case NATIVE:
                     return nativeEnable();
             }
@@ -123,7 +123,7 @@ public class Coredump {
         if (isReady()) {
             switch (type) {
                 case JAVA:
-                    return mJavaCrashHandler.disableJavaCrash();
+                    return mJavaCrashHandler.disable();
                 case NATIVE:
                     return nativeDisable();
             }
@@ -349,7 +349,7 @@ public class Coredump {
     private static class JavaCrashHandler implements Thread.UncaughtExceptionHandler {
         private Thread.UncaughtExceptionHandler defaultHandler;
 
-        public boolean enableJavaCrash() {
+        public boolean enable() {
             if (defaultHandler == null) {
                 defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
             }
@@ -357,7 +357,7 @@ public class Coredump {
             return true;
         }
 
-        public boolean disableJavaCrash() {
+        public boolean disable() {
             if (defaultHandler != null) {
                 Thread.setDefaultUncaughtExceptionHandler(defaultHandler);
             }
@@ -371,7 +371,7 @@ public class Coredump {
         @Override
         public void uncaughtException(Thread thread, Throwable throwable) {
             try {
-                disableJavaCrash();
+                disable();
                 Coredump.getInstance().doCoredump();
             } finally {
                 Process.killProcess(Process.myPid());
