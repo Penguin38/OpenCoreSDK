@@ -61,6 +61,8 @@ public class Coredump {
     public static final int FILTER_NON_READ_VMA = 1 << 4;
     public static final int FILTER_SIGNAL_CONTEXT = 1 << 5;
     public static final int FILTER_MINIDUMP = 1 << 6;
+    public static final int FILTER_JAVAHEAP_VMA = 1 << 7;
+    public static final int FILTER_JIT_CACHE_VMA = 1 << 8;
 
     static {
         try {
@@ -475,6 +477,19 @@ public class Coredump {
             sb.append("FILTER_MINIDUMP");
             need_seq = true;
         }
+
+        if ((filter & FILTER_JAVAHEAP_VMA) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FILTER_JAVAHEAP_VMA");
+            need_seq = true;
+        }
+
+        if ((filter & FILTER_JIT_CACHE_VMA) != 0) {
+            if (need_seq) sb.append('|');
+            sb.append("FILTER_JIT_CACHE_VMA");
+            need_seq = true;
+        }
+
         return sb.toString();
     }
 

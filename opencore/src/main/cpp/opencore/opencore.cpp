@@ -420,6 +420,16 @@ int Opencore::IsFilterSegment(Opencore::VirtualMemoryArea& vma) {
         if (vma.flags[0] == '-' && vma.flags[1] == '-' && vma.flags[2] == '-')
             return VMA_NULL;
     }
+
+    if (filter & FILTER_JAVAHEAP_VMA) {
+        if (vma.file.compare(0, 12, "[anon:dalvik") == 0)
+            return VMA_NULL;
+    }
+
+    if (filter & FILTER_JIT_CACHE_VMA) {
+        if (vma.file.compare(0, 10, "/memfd:jit") == 0)
+            return VMA_NULL;
+    }
     return VMA_NORMAL;
 }
 
