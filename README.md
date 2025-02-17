@@ -30,7 +30,7 @@ dependencyResolutionManagement {
 ```
 dependencies {
     ...
-    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.4.13'
+    implementation 'com.github.Penguin38:OpenCoreSDK:opencore-1.4.14'
 }
 ```
 ## Simple
@@ -57,6 +57,8 @@ dependencies {
                                        | Coredump.FILTER_SANITIZER_SHADOW_VMA
                                        | Coredump.FILTER_NON_READ_VMA
                                        | Coredump.FILTER_SIGNAL_CONTEXT
+                                      // | Coredump.FILTER_JAVAHEAP_VMA
+                                      // | Coredump.FILTER_JIT_CACHE_VMA
                                       /* | Coredump.FILTER_MINIDUMP */);
 
     //  setting core save dir
