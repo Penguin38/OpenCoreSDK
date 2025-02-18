@@ -226,9 +226,14 @@ void __attribute__((constructor)) opencore_ctor_init() {
                     | Opencore::FLAG_PID
                     | Opencore::FLAG_TIMESTAMP);
     Opencore::SetFilter(Opencore::FILTER_SPECIAL_VMA
+                     // | Opencore::FILTER_FILE_VMA
+                     // | Opencore::FILTER_SHARED_VMA
                       | Opencore::FILTER_SANITIZER_SHADOW_VMA
                       | Opencore::FILTER_NON_READ_VMA
-                      | Opencore::FILTER_SIGNAL_CONTEXT);
+                      | Opencore::FILTER_SIGNAL_CONTEXT
+                     // | Opencore::FILTER_JAVAHEAP_VMA
+                     // | Opencore::FILTER_JIT_CACHE_VMA
+                     /* | Opencore::FILTER_MINIDUMP */);
     Opencore::Enable();
     JNI_LOGI("Init inject %s environment..", Opencore::GetVersion());
 }
