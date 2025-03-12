@@ -169,6 +169,7 @@ public:
         void* context;
     };
 
+    static void Dump();
     static void Dump(const char* filename);
     static void Dump(const char* filename, int tid);
     static void Dump(siginfo_t* siginfo, void* ucontext_raw);

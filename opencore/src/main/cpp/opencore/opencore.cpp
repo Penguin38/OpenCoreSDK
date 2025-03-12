@@ -204,6 +204,13 @@ int Opencore::GetFilter() {
     return FILTER_NONE;
 }
 
+void Opencore::Dump() {
+    Opencore::DumpOption option;
+    option.pid = getpid();
+    option.tid = gettid();
+    Opencore::Dump(&option);
+}
+
 void Opencore::Dump(const char* filename) {
     Opencore::DumpOption option;
     option.filename = const_cast<char *>(filename);
