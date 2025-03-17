@@ -18,7 +18,7 @@
 #include <string>
 
 #ifndef LOG_TAG
-#define LOG_TAG "Opencore"
+#define LOG_TAG "opencore"
 #endif
 
 #include "opencore/opencore.h"
@@ -236,5 +236,11 @@ void __attribute__((constructor)) opencore_ctor_init() {
                      /* | Opencore::FILTER_MINIDUMP */);
     Opencore::Enable();
     JNI_LOGI("Init inject %s environment..", Opencore::GetVersion());
+}
+
+extern "C"
+void __attribute__((destructor)) opencore_dtor_init() {
+    Opencore::Disable();
+    JNI_LOGI("Remove opencore environment.");
 }
 #endif

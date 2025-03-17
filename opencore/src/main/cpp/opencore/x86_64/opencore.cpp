@@ -15,7 +15,7 @@
  */
 
 #ifndef LOG_TAG
-#define LOG_TAG "x86_64-Opencore"
+#define LOG_TAG "x86_64-opencore"
 #endif
 
 #include "eajnis/Log.h"

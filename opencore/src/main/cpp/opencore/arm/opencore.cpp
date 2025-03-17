@@ -15,7 +15,7 @@
  */
 
 #ifndef LOG_TAG
-#define LOG_TAG "arm-Opencore"
+#define LOG_TAG "arm-opencore"
 #endif
 
 #include "eajnis/Log.h"
