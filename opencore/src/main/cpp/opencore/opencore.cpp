@@ -522,6 +522,12 @@ void Opencore::ParseMaps(int pid, std::vector<VirtualMemoryArea>& maps) {
                    &vma.offset, &vma.major, &vma.minor, &vma.inode, filename, &m);
 
             vma.file = filename;
+
+#if defined(__i386__) || defined(__x86__) || defined(__arm__)
+            // avoid compat32 bit application dump64
+            if (vma.begin > 0xFFFFFFFF)
+                break;
+#endif
             maps.push_back(vma);
         }
         fclose(fp);
