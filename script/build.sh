@@ -5,4 +5,4 @@ if [ -z $JAVA_HOME ];then
     echo "    ./script/build.sh"
     exit
 fi
-./gradlew clean -Pgroup=com.github.Penguin38 -Pversion=opencore-1.4.14 -xtest -xlint assemble publishToMavenLocal
+./gradlew clean -Pgroup=com.github.Penguin38 -Pversion=opencore-1.4.15 -xtest -xlint assemble publishToMavenLocal
