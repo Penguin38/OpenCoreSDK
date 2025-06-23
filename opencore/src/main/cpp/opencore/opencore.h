@@ -101,6 +101,7 @@ public:
         /** only opencore-sdk append **/
         ucontext_raw = nullptr;
         siginfo = nullptr;
+        cb = nullptr;
         timeout = DEF_TIMEOUT;
     }
 
