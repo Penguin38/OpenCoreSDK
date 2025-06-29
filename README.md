@@ -164,3 +164,14 @@ Reading symbols from symbols/data/app/~~t-3m0JHw8Ez4qv9bddEVKg==/penguin.opencor
 #19 0x000000717a866b24 in art::Thread::CreateCallback(void*) () from symbols/apex/com.android.art/lib64/libart.so
 ...
 ```
+## Build Only
+```
+Optional:
+export BUILD_TYPE="Debug"
+export BUILD_ANDROID_ABIS="arm64-v8a armeabi-v7a x86_64 x86"
+export BUILD_ANDROID_PLATFORM="android-30"
+
+Required:
+export ANDROID_NDK_HOME=<NDK_DIR>
+./script/build_opencore.sh
+```
