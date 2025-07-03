@@ -47,6 +47,26 @@ typedef struct elf64_prstatus {
     uint32_t             pr_fpvalid;
 } Elf64_prstatus;
 
+struct fpsimd_state {
+    uint64_t    vregs[64]; // __uint128_t vregs[32]
+    uint32_t    fpsr;
+    uint32_t    fpcr;
+    uint32_t    __reserved[2];
+};
+
+typedef struct elf64_fpregset {
+    struct fpsimd_state regs;
+} Elf64_fpregset;
+
+struct tls {
+    uint64_t tpidr_el0;
+    uint64_t tpidr2_el0;
+};
+
+typedef struct elf64_tls {
+    struct tls regs;
+} Elf64_tls;
+
 class Opencore : public lp64::OpencoreImpl {
 public:
     Opencore() : lp64::OpencoreImpl(),
@@ -55,6 +75,8 @@ public:
     void CreateCorePrStatus(int pid);
     void WriteCorePrStatus(FILE* fp);
     int IsSpecialFilterSegment(Opencore::VirtualMemoryArea& vma);
+    void WriteCoreFpRegs(int tid, FILE* fp);
+    void WriteCoreTLS(int tid, FILE* fp);
     void WriteCorePAC(int tid, FILE* fp);
     void WriteCoreMTE(int tid, FILE* fp);
     int getMachine() { return EM_AARCH64; }
