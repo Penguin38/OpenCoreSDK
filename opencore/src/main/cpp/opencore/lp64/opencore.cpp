@@ -315,6 +315,8 @@ bool OpencoreImpl::DoCoredump(const char* filename) {
     AlignNoteSegment(fp);
     WriteCoreLoadSegment(getPid(), fp);
 
+    fflush(fp);
+    fsync(fileno(fp));
     fclose(fp);
     return true;
 }
