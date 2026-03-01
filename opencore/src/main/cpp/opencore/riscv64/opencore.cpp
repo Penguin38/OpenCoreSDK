@@ -31,9 +31,8 @@ namespace riscv64 {
 void Opencore::CreateCorePrStatus(int pid) {
     if (!threads.size()) return;
 
-    prnum = threads.size();
-    prstatus = (Elf64_prstatus *)malloc(prnum * sizeof(Elf64_prstatus));
-    memset(prstatus, 0, prnum * sizeof(Elf64_prstatus));
+    prstatus.assign(threads.size(), {});
+    int prnum = (int)prstatus.size();
 
     int cur = 1;
     for (int index = 0; index < prnum; index++) {
@@ -89,7 +88,7 @@ void Opencore::WriteCorePrStatus(FILE* fp) {
 int Opencore::IsSpecialFilterSegment(Opencore::VirtualMemoryArea& vma) {
     int filter = getFilter();
     if (filter & FILTER_MINIDUMP) {
-        if (!prnum)
+        if (prstatus.empty())
             return VMA_NULL;
 
         riscv64::pt_regs *regs = &prstatus[0].pr_reg;
@@ -134,7 +133,7 @@ int Opencore::IsSpecialFilterSegment(Opencore::VirtualMemoryArea& vma) {
 }
 
 void Opencore::Finish() {
-    if (prstatus) free(prstatus);
+    prstatus.clear();
     lp64::OpencoreImpl::Finish();
 }
 

@@ -96,7 +96,6 @@ public:
         extra_note_filesz = 0;
         page_size = sysconf(_SC_PAGE_SIZE);
         align_size = ELF_PAGE_SIZE;
-        zero = nullptr;
 
         /** only opencore-sdk append **/
         ucontext_raw = nullptr;
@@ -193,7 +192,7 @@ protected:
     int extra_note_filesz;
     std::vector<ThreadRecord> threads;
     std::vector<VirtualMemoryArea> maps;
-    uint8_t* zero;
+    std::vector<uint8_t> zero;
     uint32_t align_size;
     uint32_t page_size;
 

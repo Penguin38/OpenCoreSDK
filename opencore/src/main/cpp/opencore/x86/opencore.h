@@ -53,16 +53,14 @@ typedef struct elf32_prstatus {
 
 class Opencore : public lp32::OpencoreImpl {
 public:
-    Opencore() : lp32::OpencoreImpl(),
-                 prnum(0), prstatus(nullptr) {}
+    Opencore() : lp32::OpencoreImpl() {}
     void Finish();
     void CreateCorePrStatus(int pid);
     void WriteCorePrStatus(FILE* fp);
     int IsSpecialFilterSegment(Opencore::VirtualMemoryArea& vma);
     int getMachine() { return EM_386; }
 private:
-    int prnum;
-    Elf32_prstatus *prstatus;
+    std::vector<Elf32_prstatus> prstatus;
 };
 
 } // namespace x86

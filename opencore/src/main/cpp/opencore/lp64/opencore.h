@@ -43,10 +43,7 @@ public:
 
 class OpencoreImpl : public Opencore {
 public:
-    OpencoreImpl() : Opencore(),
-                     phdr(nullptr), phnum(0),
-                     auxv(nullptr), auxvnum(0),
-                     file(nullptr), fileslen(0) {}
+    OpencoreImpl() : Opencore(), auxvnum(0), fileslen(0) {}
     void Finish();
     bool DoCoredump(const char* filename);
     int NeedFilterFile(Opencore::VirtualMemoryArea& vma);
@@ -80,12 +77,11 @@ public:
     virtual int IsSpecialFilterSegment(Opencore::VirtualMemoryArea& vma) = 0;
 protected:
     Elf64_Ehdr ehdr;
-    Elf64_Phdr *phdr;
-    int phnum;
+    std::vector<Elf64_Phdr> phdr;
     Elf64_Phdr note;
-    lp64::Auxv *auxv;
+    std::vector<lp64::Auxv> auxv;
     int auxvnum;
-    lp64::File *file;
+    std::vector<lp64::File> file;
     int fileslen;
 };
 

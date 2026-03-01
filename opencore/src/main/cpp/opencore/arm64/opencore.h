@@ -69,8 +69,7 @@ typedef struct elf64_tls {
 
 class Opencore : public lp64::OpencoreImpl {
 public:
-    Opencore() : lp64::OpencoreImpl(),
-                 prnum(0), prstatus(nullptr) {}
+    Opencore() : lp64::OpencoreImpl() {}
     void Finish();
     void CreateCorePrStatus(int pid);
     void WriteCorePrStatus(FILE* fp);
@@ -81,8 +80,7 @@ public:
     void WriteCoreMTE(int tid, FILE* fp);
     int getMachine() { return EM_AARCH64; }
 private:
-    int prnum;
-    Elf64_prstatus *prstatus;
+    std::vector<Elf64_prstatus> prstatus;
 };
 
 } // namespace arm64

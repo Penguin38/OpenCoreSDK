@@ -31,9 +31,8 @@ namespace x86_64 {
 void Opencore::CreateCorePrStatus(int pid) {
     if (!threads.size()) return;
 
-    prnum = threads.size();
-    prstatus = (Elf64_prstatus *)malloc(prnum * sizeof(Elf64_prstatus));
-    memset(prstatus, 0, prnum * sizeof(Elf64_prstatus));
+    prstatus.assign(threads.size(), {});
+    int prnum = (int)prstatus.size();
 
     int cur = 1;
     for (int index = 0; index < prnum; index++) {
@@ -102,6 +101,7 @@ void Opencore::WriteCorePrStatus(FILE* fp) {
     memset(magic, 0, sizeof(magic));
     snprintf(magic, NOTE_CORE_NAME_SZ, ELFCOREMAGIC);
 
+    int prnum = (int)prstatus.size();
     for (int index = 0; index < prnum; index++) {
         fwrite(&elf_nhdr, sizeof(Elf64_Nhdr), 1, fp);
         fwrite(magic, sizeof(magic), 1, fp);
@@ -113,7 +113,7 @@ void Opencore::WriteCorePrStatus(FILE* fp) {
 int Opencore::IsSpecialFilterSegment(Opencore::VirtualMemoryArea& vma) {
     int filter = getFilter();
     if (filter & FILTER_MINIDUMP) {
-        if (!prnum)
+        if (prstatus.empty())
             return VMA_NULL;
 
         x86_64::pt_regs *regs = &prstatus[0].pr_reg;
@@ -142,7 +142,7 @@ int Opencore::IsSpecialFilterSegment(Opencore::VirtualMemoryArea& vma) {
 }
 
 void Opencore::Finish() {
-    if (prstatus) free(prstatus);
+    prstatus.clear();
     lp64::OpencoreImpl::Finish();
 }
 
